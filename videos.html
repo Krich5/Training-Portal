@@ -1,219 +1,151 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Training Videos</title>
   <meta name="color-scheme" content="dark">
   <style>
-    :root{ --bg:#0b1020; --bg2:#0a132a; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accentA:#22d3ee; --accentB:#3b82f6; --border:rgba(255,255,255,.08); }
+    :root{ --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --accentA:#22d3ee; --accentB:#3b82f6; --border:rgba(255,255,255,.08);}
     *,*::before,*::after{box-sizing:border-box}
-    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans"; background:linear-gradient(180deg,var(--bg),var(--bg2)); color:var(--fg)}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans";background:var(--bg);color:var(--fg);min-height:100vh}
     header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
-    .wrap{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+    .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+    .left{justify-self:start}
+    .center{justify-self:center;text-align:center}
+    .right{justify-self:end}
     .brand{font-weight:800;letter-spacing:.2px}
     .logo{height:36px}
-    main{max-width:1100px;margin:28px auto;padding:0 16px}
-    .shell{display:grid; grid-template-columns: 2fr 1fr; gap:22px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
-    h1{margin:.1rem 0 .6rem;font-size:1.6rem}
+    .btnLink{background:#0e1525;color:var(--fg);border:1px solid var(--border);font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
+    main{max-width:1100px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
+    .title{font-size:1.1rem;font-weight:800;margin-bottom:8px}
     .muted{color:var(--muted)}
-    .titleRow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d;font-weight:800;padding:10px 18px;border-radius:12px;cursor:pointer}
-    .btn.small{padding:8px 14px;font-size:.9rem}
-    .btn.secondary{background:#0e1525;color:var(--fg);border:1px solid var(--border)}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .embed{position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:14px; background:#000; border:1px solid var(--border)}
-    video.player{position:absolute; top:0; left:0; width:100%; height:100%; background:#000}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px}
-    .pill{font-size:.85rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#0e1525}
-    .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-    .item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);background:#0e1525;border-radius:12px}
-    .item[aria-current="true"]{outline:2px solid rgba(125,211,252,.35)}
-    .progress{height:8px;background:#0e1525;border:1px solid var(--border);border-radius:999px;overflow:hidden}
-    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accentA),var(--accentB))}
-    .check{font-weight:700; color:#7dd3fc}
-    .done{opacity:.9}
-    .empty{color:var(--muted);padding:6px 0 12px}
+    .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    video{width:100%;max-height:60vh;border-radius:12px;border:1px solid var(--border);background:black}
+    ul{margin-top:10px}
+    li{margin:6px 0}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <div class="brand">Training Portal</div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button id="logout" class="btn" type="button">Log out</button>
-        <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="CX Advanced Solutions" class="logo"/>
-      </div>
+      <div class="left"><a class="btnLink" href="index.html">← Back</a></div>
+      <div class="center"><div id="hdr" class="brand">Training Videos</div></div>
+      <div class="right"><img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="CX Advanced Solutions" class="logo"/></div>
     </div>
   </header>
 
   <main>
-    <div class="titleRow" style="margin-bottom:10px">
-      <h1 id="pageTitle" style="margin:0">Training Videos</h1>
-      <div class="muted">Welcome, <strong id="who"></strong></div>
-    </div>
+    <section class="card">
+      <div class="title" id="seriesTitle"></div>
+      <div class="muted" id="who"></div>
 
-    <section class="shell">
-      <section class="card">
-        <div id="nowTitle" class="muted" style="margin:0 0 6px">Now playing</div>
-        <div class="embed"><video id="player" class="player" controls controlslist="nodownload noplaybackrate" disablepictureinpicture preload="metadata"></video></div>
+      <div style="margin-top:14px">
+        <video id="player" controls playsinline></video>
+      </div>
 
-        <div class="row">
-          <div class="pill"><span id="timeCur">0:00</span> / <span id="timeDur">0:00</span></div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button id="prevBtn" class="btn small secondary" type="button">← Previous</button>
-            <button id="restartBtn" class="btn small secondary" type="button">Restart ⟳</button>
-            <button id="nextBtn" class="btn small" type="button" disabled>Next Video →</button>
-          </div>
-        </div>
+      <div class="row" style="margin-top:12px">
+        <button id="prevBtn" class="btn">Prev</button>
+        <button id="nextBtn" class="btn">Next</button>
+        <div class="muted" id="progress"></div>
+      </div>
 
-        <div class="row" style="margin-top:12px">
-          <div class="progress" style="width:100%"><div id="bigBar" class="bar"></div></div>
-          <div class="pill"><span id="overallPct">0</span>% complete</div>
-        </div>
-      </section>
-
-      <aside class="card">
-        <h3 style="margin:0 0 10px">Playlist</h3>
-        <ul id="list" class="list"></ul>
-        <div id="emptyMsg" class="empty" style="display:none">No videos yet for this course.</div>
-      </aside>
+      <div style="margin-top:10px">
+        <strong>Playlist</strong>
+        <ul id="list"></ul>
+      </div>
     </section>
   </main>
 
   <script>
-    const AUTH_KEY="training_authed", NAME_KEY="training_visitor_name", COMPANY_KEY="training_company";
-    if(localStorage.getItem(AUTH_KEY)!=="true"){ location.href="index.html"; }
-    const viewerName = localStorage.getItem(NAME_KEY) || "guest";
-    const viewerCompany = localStorage.getItem(COMPANY_KEY) || "";
-    document.getElementById("who").textContent = viewerName;
+  // ===== set this to your current Apps Script /exec URL =====
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybMZhprwdU-mW6SayIvESM5OXxzTioZiMvmj4JfEcSUUns50uKd3T33P9ylqvRNi6v/exec";
 
-    const params = new URLSearchParams(location.search);
-    const COURSE_KEY = params.get('course') || 'agent';
+  // Read who/what from session
+  const name = sessionStorage.getItem('tv_name') || 'Guest';
+  const course = sessionStorage.getItem('tv_course') || 'agent';
+  const company = sessionStorage.getItem('tv_company') || '';
 
-    const titleMap = { agent:"Agent Training Videos", supervisor:"Supervisor Training Videos", admin:"Admin Training Videos" };
-    document.getElementById("pageTitle").textContent = titleMap[COURSE_KEY] || "Training Videos";
+  document.getElementById('hdr').textContent =
+    (course === 'supervisor' ? 'Supervisor Training Videos' :
+     course === 'admin' ? 'Admin Training Videos' : 'Agent Training Videos');
 
-    const COURSES = {
-      agent: [
-        { id:"v1", title:"Agent Login (Desktop)", src:"AgentVideos/Agent%20Login%20(Desktop).mp4" },
-        { id:"v2", title:"Profile Settings",      src:"AgentVideos/Profiles%20Settings.mp4" },
-        { id:"v3", title:"Agent State",           src:"AgentVideos/Agent%20State.mp4" },
-        { id:"v4", title:"Outbound Calling",      src:"AgentVideos/Outbound%20Calling.mp4" },
-        { id:"v5", title:"Side Navigation",       src:"AgentVideos/Side%20Navigation.mp4" },
-        { id:"v6", title:"Sign Out",              src:"AgentVideos/Sign%20Out.mp4" }
-      ],
-      supervisor: [
-        { id:"s1", title:"Supervisor Walkthrough", src:"SupVideos/IMG_3339.mov" }
-      ],
-      admin: []
-    };
-    const VIDEOS = COURSES[COURSE_KEY] || COURSES.agent;
+  document.getElementById('seriesTitle').textContent =
+    (course === 'supervisor' ? 'Supervisor Series' :
+     course === 'admin' ? 'Admin Series' : 'Agent Series');
 
-    const WEBHOOK="https://script.google.com/macros/s/AKfycbz8cUU1d9yaaSZJ8b3LUKbv499qglxzgF-y6kwxoWBPe5Tm7eE-p5p4jTSVHLvOwSHJ/exec";
+  document.getElementById('who').textContent = `${name}${company ? ' • ' + company : ''}`;
 
-    const player = document.getElementById("player");
-    const nowTitle = document.getElementById("nowTitle");
-    const timeCur = document.getElementById("timeCur");
-    const timeDur = document.getElementById("timeDur");
-    const nextBtn = document.getElementById("nextBtn");
-    const prevBtn = document.getElementById("prevBtn");
-    const restartBtn = document.getElementById("restartBtn");
-    const overallPct = document.getElementById("overallPct");
-    const bigBar = document.getElementById("bigBar");
-    const listEl = document.getElementById("list");
-    const emptyMsg = document.getElementById("emptyMsg");
+  // Playlists by course
+  const PLAYLISTS = {
+    agent: [
+      ['Agent login','AgentVideos/Agent%20Login%20(Desktop).mp4'],
+      ['Profile settings','AgentVideos/Profiles%20Settings.mp4'],
+      ['Agent state','AgentVideos/Agent%20State.mp4'],
+      ['Outbound calling','AgentVideos/Outbound%20Calling.mp4'],
+      ['Side navigation','AgentVideos/Side%20Navigation.mp4'],
+      ['Sign out','AgentVideos/Sign%20Out.mp4']
+    ],
+    supervisor: [
+      ['Example supervisor clip','SupVideos/IMG_3339.mov']
+    ],
+    admin: [
+      ['Admin intro','AgentVideos/Agent%20Login%20(Desktop).mp4']
+    ]
+  };
 
-    document.getElementById("logout").addEventListener("click",()=>{
-      localStorage.removeItem(AUTH_KEY); localStorage.removeItem(NAME_KEY); localStorage.removeItem(COMPANY_KEY);
-      location.href="index.html";
-    });
+  const videos = PLAYLISTS[course] || PLAYLISTS.agent;
 
-    const STORAGE_KEY="training_progress_v2_" + COURSE_KEY;
-    let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if(!progress){ progress = { index: 0, per: (VIDEOS.length? VIDEOS: []).map(()=>({watched:0,dur:0,done:false})) }; save(); }
-    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
-    const fmt = s => { s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), r=String(s%60).padStart(2,"0"); return `${m}:${r}`; };
-
-    function updateOverall(){
-      const total = VIDEOS.length, done = progress.per.filter(p=>p.done).length;
-      const pct = total ? Math.round((done / total) * 100) : 0;
-      overallPct.textContent = pct; bigBar.style.width = pct + "%";
-      if(total && done === total && !progress.completed){
-        progress.completed = new Date().toISOString(); save();
-        try{
-          fetch(WEBHOOK,{ method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              type:"completion", course: COURSE_KEY, name: viewerName, company: viewerCompany, ts: progress.completed,
-              videos: VIDEOS.map((v,i)=>({ title:v.title, watched:progress.per[i].watched, duration:progress.per[i].dur, done:progress.per[i].done }))
-            })
-          });
-        }catch(_){}
-        alert("All videos completed. Great job!");
-      }
-    }
-
-    function renderList(){
-      listEl.innerHTML = "";
-      if (!VIDEOS.length){ emptyMsg.style.display="block"; return; } else { emptyMsg.style.display="none"; }
-      if (progress.per.length !== VIDEOS.length){ progress.per = VIDEOS.map((_,i)=> progress.per[i] || {watched:0,dur:0,done:false}); save(); }
-      VIDEOS.forEach((v,i)=>{
-        const li = document.createElement("li");
-        li.className = "item" + (progress.per[i].done ? " done" : "");
-        if(i === progress.index) li.setAttribute("aria-current","true");
-        const pct = progress.per[i].dur ? Math.min(100, Math.round(progress.per[i].watched/progress.per[i].dur*100)) : 0;
-        li.innerHTML = `<div><div style="font-weight:700">${v.title}</div>
-          <div class="progress" style="margin-top:6px;width:160px"><div class="bar" style="width:${pct}%"></div></div></div>
-          <div>${progress.per[i].done ? '<span class="check">✓</span>' : `<span class="muted">${fmt(progress.per[i].watched)}</span>`}</div>`;
-        li.style.cursor="pointer"; li.addEventListener("click", ()=> load(i, { replay:true }));
-        listEl.appendChild(li);
+  // Simple logger (POST text/plain to avoid preflight)
+  async function logEvent(payload){
+    try{
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
       });
-      updateOverall();
-    }
+    }catch(_){}
+  }
 
-    let maxAllowed = 0, replayMode = false;
+  // Build UI
+  const list = document.getElementById('list');
+  const player = document.getElementById('player');
+  const progress = document.getElementById('progress');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
 
-    function load(i, opts = {}){
-      if (!VIDEOS.length) return;
-      progress.index = i; save(); replayMode = !!opts.replay;
-      const v = VIDEOS[i]; nowTitle.textContent = "Now playing — " + v.title;
-      player.src = v.src; nextBtn.disabled = true; prevBtn.disabled = (i === 0);
-      if (replayMode){ maxAllowed = Infinity; player.currentTime = 0; } 
-      else { maxAllowed = progress.per[i].watched || 0; player.currentTime = maxAllowed; }
-      player.play().catch(()=>{}); renderList();
-    }
+  let idx = 0;
+  function renderList(){
+    list.innerHTML = videos.map((v,i)=>`<li${i===idx?' style="font-weight:800"':''}>${v[0]}</li>`).join('');
+    progress.textContent = `Video ${idx+1} of ${videos.length}`;
+  }
+  function load(i){
+    idx = Math.max(0, Math.min(videos.length-1, i));
+    player.src = videos[idx][1];
+    player.currentTime = 0;
+    renderList();
+  }
+  prevBtn.onclick = ()=> load(idx-1);
+  nextBtn.onclick = ()=> load(idx+1);
 
-    player.addEventListener("loadedmetadata", ()=>{
-      if (!VIDEOS.length) return; const i = progress.index;
-      progress.per[i].dur = player.duration || progress.per[i].dur; timeDur.textContent = fmt(progress.per[i].dur);
-      if (!replayMode){ const resume = Math.min(progress.per[i].watched, Math.max(0,(player.duration||1)-1)); player.currentTime = resume; maxAllowed = resume; }
-      else { player.currentTime = 0; }
-      timeCur.textContent = fmt(player.currentTime);
+  // On complete, go next (and log completion)
+  player.addEventListener('ended', ()=>{
+    logEvent({
+      type:'completion',
+      name, course, company,
+      ts: Date.now(),
+      page: 'videos',
+      ua: navigator.userAgent,
+      videos: { index: idx, title: videos[idx][0], src: videos[idx][1] }
     });
-    player.addEventListener("timeupdate", ()=>{
-      if (!VIDEOS.length) return; const i = progress.index; const cur = player.currentTime || 0; timeCur.textContent = fmt(cur);
-      if (!replayMode){ if(cur > maxAllowed) maxAllowed = cur; progress.per[i].watched = Math.max(progress.per[i].watched, maxAllowed); save(); renderList(); }
-    });
-    player.addEventListener("seeking", ()=>{ if (!replayMode){ const t = player.currentTime||0; if(t > maxAllowed + 1) player.currentTime = maxAllowed; }});
-    player.addEventListener("ended", ()=>{
-      if (!VIDEOS.length) return; const i = progress.index; const dur = progress.per[i].dur || player.duration || 0;
-      if (!replayMode){
-        if((Math.max(maxAllowed, player.currentTime)) >= 0.98 * dur){
-          progress.per[i].done = true; save(); renderList(); nextBtn.disabled = (i >= VIDEOS.length - 1);
-          if(i < VIDEOS.length - 1){ setTimeout(()=> load(i+1), 600); } else { updateOverall(); }
-        }
-      } else { nextBtn.disabled = !(progress.per[i].done) || i >= VIDEOS.length - 1; }
-    });
+    if (idx < videos.length-1) load(idx+1);
+  });
 
-    nextBtn.addEventListener("click", ()=>{ const i = progress.index; if(i < VIDEOS.length - 1) load(i+1); });
-    prevBtn.addEventListener("click", ()=>{ const i = progress.index; if(i > 0) load(i-1, { replay:false }); });
-    restartBtn.addEventListener("click", ()=> load(progress.index, { replay:true }));
-
-    setInterval(()=>{ if (VIDEOS.length){ const i = progress.index; nextBtn.disabled = (!progress.per[i].done && !replayMode) || i >= VIDEOS.length - 1; } }, 400);
-
-    if (!VIDEOS.length){ renderList(); nowTitle.textContent="No videos to play"; nextBtn.disabled=prevBtn.disabled=restartBtn.disabled=true; }
-    else { renderList(); load(Math.min(progress.index, VIDEOS.length-1), { replay:false }); }
+  // Start
+  renderList();
+  load(0);
   </script>
 </body>
 </html>
