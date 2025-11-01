@@ -35,7 +35,6 @@
     video.player{position:absolute; top:0; left:0; width:100%; height:100%; border:0; background:#000}
     .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px}
     .pill{font-size:.85rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#0e1525}
-    /* playlist */
     .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
     .item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);
           background:#0e1525;border-radius:12px}
@@ -44,6 +43,7 @@
     .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accentA),var(--accentB))}
     .check{font-weight:700; color:#7dd3fc}
     .done{opacity:.9}
+    .empty{color:var(--muted);padding:6px 0 12px}
   </style>
 </head>
 <body>
@@ -76,6 +76,7 @@
           <div class="pill"><span id="timeCur">0:00</span> / <span id="timeDur">0:00</span></div>
           <div style="display:flex;gap:10px;align-items:center">
             <button id="prevBtn" class="btn small secondary" type="button">← Previous</button>
+            <button id="restartBtn" class="btn small secondary" type="button">Restart ⟳</button>
             <button id="nextBtn" class="btn small" type="button" disabled>Next Video →</button>
           </div>
         </div>
@@ -90,75 +91,88 @@
       <aside class="card">
         <h3 style="margin:0 0 10px">Playlist</h3>
         <ul id="list" class="list" aria-label="Training playlist"></ul>
+        <div id="emptyMsg" class="empty" style="display:none">No videos yet for this course.</div>
       </aside>
     </section>
   </main>
 
   <script>
-    // --- config / data ---
-    const AUTH_KEY="training_authed", NAME_KEY="training_visitor_name";
-    const COMPLETION_WEBHOOK="https://script.google.com/macros/s/AKfycbyB23AOVKrraH3h23YR-QCrrl5pVO4qUWDX1tmp84htriq0xxKDqwA0wHCNK15rHAMh/exec";
-
-    const VIDEOS = [
-      { id:"v1", title:"Agent Login (Desktop)", src:"AgentVideos/Agent%20Login%20(Desktop).mp4" },
-      { id:"v2", title:"Profile Settings",      src:"AgentVideos/Profiles%20Settings.mp4" },
-      { id:"v3", title:"Agent State",           src:"AgentVideos/Agent%20State.mp4" },
-      { id:"v4", title:"Outbound Calling",      src:"AgentVideos/Outbound%20Calling.mp4" },
-      { id:"v5", title:"Side Navigation",       src:"AgentVideos/Side%20Navigation.mp4" },
-      { id:"v6", title:"Sign Out",              src:"AgentVideos/Sign%20Out.mp4" }
-    ];
-
     // --- auth guard + name ---
+    const AUTH_KEY="training_authed", NAME_KEY="training_visitor_name";
     if(localStorage.getItem(AUTH_KEY)!=="true"){
       location.href=new URL("index.html",location.href).toString();
     }
     const viewerName = localStorage.getItem(NAME_KEY) || "guest";
     document.getElementById("who").textContent = viewerName;
 
-    // --- state & persistence ---
-    const STORAGE_KEY="training_progress_v1";
-    // progress schema: { index, per: [{watched: seconds, dur: seconds, done: bool}] }
-    let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if(!progress){ progress = { index: 0, per: VIDEOS.map(()=>({watched:0,dur:0,done:false})) }; save(); }
+    // --- course from URL ---
+    const params = new URLSearchParams(location.search);
+    const COURSE_KEY = params.get('course') || 'agent';
 
-    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
+    // --- playlists (agent filled in, others scaffolded) ---
+    const COURSES = {
+      agent: [
+        { id:"v1", title:"Agent Login (Desktop)", src:"AgentVideos/Agent%20Login%20(Desktop).mp4" },
+        { id:"v2", title:"Profile Settings",      src:"AgentVideos/Profiles%20Settings.mp4" },
+        { id:"v3", title:"Agent State",           src:"AgentVideos/Agent%20State.mp4" },
+        { id:"v4", title:"Outbound Calling",      src:"AgentVideos/Outbound%20Calling.mp4" },
+        { id:"v5", title:"Side Navigation",       src:"AgentVideos/Side%20Navigation.mp4" },
+        { id:"v6", title:"Sign Out",              src:"AgentVideos/Sign%20Out.mp4" }
+      ],
+      supervisor: [
+        // Add MP4s when ready, e.g.:
+        // { id:"s1", title:"Supervisor Intro", src:"SupervisorVideos/Intro.mp4" },
+      ],
+      admin: [
+        // Add MP4s when ready, e.g.:
+        // { id:"a1", title:"Admin Overview", src:"AdminVideos/Overview.mp4" },
+      ]
+    };
+    const VIDEOS = COURSES[COURSE_KEY] || COURSES.agent;
 
-    // --- ui refs ---
+    // --- webhook (completion) ---
+    const COMPLETION_WEBHOOK="https://script.google.com/macros/s/AKfycbyB23AOVKrraH3h23YR-QCrrl5pVO4qUWDX1tmp84htriq0xxKDqwA0wHCNK15rHAMh/exec";
+
+    // --- UI refs ---
     const player = document.getElementById("player");
     const nowTitle = document.getElementById("nowTitle");
     const timeCur = document.getElementById("timeCur");
     const timeDur = document.getElementById("timeDur");
     const nextBtn = document.getElementById("nextBtn");
     const prevBtn = document.getElementById("prevBtn");
+    const restartBtn = document.getElementById("restartBtn");
     const overallPct = document.getElementById("overallPct");
     const bigBar = document.getElementById("bigBar");
     const listEl = document.getElementById("list");
+    const emptyMsg = document.getElementById("emptyMsg");
+
     document.getElementById("logout").addEventListener("click",()=>{
       localStorage.removeItem(AUTH_KEY); localStorage.removeItem(NAME_KEY);
       location.href=new URL("index.html",location.href).toString();
     });
 
-    // --- helpers ---
-    const fmt = s => {
-      s = Math.max(0, Math.floor(s||0));
-      const m = Math.floor(s/60), r = (s%60).toString().padStart(2,"0");
-      return `${m}:${r}`;
-    };
+    // --- state & persistence (per course) ---
+    const STORAGE_KEY="training_progress_v2_" + COURSE_KEY;
+    // progress: { index, per: [{watched, dur, done}], completed? }
+    let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if(!progress){ progress = { index: 0, per: (VIDEOS.length? VIDEOS: Array.from({length:0})).map(()=>({watched:0,dur:0,done:false})) }; save(); }
+    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
+
+    // --- Helpers ---
+    const fmt = s => { s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), r=String(s%60).padStart(2,"0"); return `${m}:${r}`; };
+
     function updateOverall(){
+      const total = VIDEOS.length;
       const done = progress.per.filter(p=>p.done).length;
-      const pct = Math.round((done / VIDEOS.length) * 100);
-      overallPct.textContent = pct;
-      bigBar.style.width = pct + "%";
-      if(done === VIDEOS.length && !progress.completed){
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      overallPct.textContent = pct; bigBar.style.width = pct + "%";
+      if(total && done === total && !progress.completed){
         progress.completed = new Date().toISOString(); save();
-        // completion webhook
         try{
           fetch(COMPLETION_WEBHOOK, {
             method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"},
             body: JSON.stringify({
-              type:"completion",
-              name: viewerName,
-              ts: progress.completed,
+              type:"completion", course: COURSE_KEY, name: viewerName, ts: progress.completed,
               videos: VIDEOS.map((v,i)=>({ title:v.title, watched:progress.per[i].watched, duration:progress.per[i].dur, done:progress.per[i].done }))
             })
           });
@@ -166,119 +180,154 @@
         alert("All videos completed. Great job!");
       }
     }
+
     function renderList(){
       listEl.innerHTML = "";
+      if (!VIDEOS.length){
+        emptyMsg.style.display = "block";
+        return;
+      } else {
+        emptyMsg.style.display = "none";
+      }
+      // ensure per array length matches videos (in case you add/remove later)
+      if (progress.per.length !== VIDEOS.length){
+        progress.per = VIDEOS.map((_,i)=> progress.per[i] || {watched:0,dur:0,done:false});
+        save();
+      }
       VIDEOS.forEach((v,i)=>{
         const li = document.createElement("li");
         li.className = "item" + (progress.per[i].done ? " done" : "");
         li.setAttribute("data-i", i);
         if(i === progress.index) li.setAttribute("aria-current","true");
 
+        const pct = progress.per[i].dur ? Math.min(100, Math.round(progress.per[i].watched/progress.per[i].dur*100)) : 0;
         const left = document.createElement("div");
         left.innerHTML = `<div style="font-weight:700">${v.title}</div>
-          <div class="progress" style="margin-top:6px;width:160px"><div class="bar" style="width:${progress.per[i].dur? Math.min(100, Math.round(progress.per[i].watched/progress.per[i].dur*100)) : 0}%"></div></div>`;
+          <div class="progress" style="margin-top:6px;width:160px"><div class="bar" style="width:${pct}%"></div></div>`;
 
         const right = document.createElement("div");
         right.innerHTML = progress.per[i].done ? `<span class="check">✓</span>` : `<span class="muted">${fmt(progress.per[i].watched)}</span>`;
 
         li.append(left, right);
         li.style.cursor = "pointer";
-        li.addEventListener("click", ()=>{
-          // can revisit completed ones; otherwise only current or earlier
-          if(progress.per[i].done || i <= progress.index) load(i);
-        });
+        li.addEventListener("click", ()=> load(i, { replay: true })); // manual click => replay mode
         listEl.appendChild(li);
       });
       updateOverall();
     }
 
-    // --- load & play with anti-skip ---
-    let maxAllowed = 0; // seconds allowed to seek to (grows as they watch)
-    function load(i){
+    // --- load & play (anti-skip + replay mode) ---
+    let maxAllowed = 0;     // furthest watched, to limit seeking
+    let replayMode = false; // true when manually chosen or restarted
+
+    function load(i, opts = {}){
+      if (!VIDEOS.length){ return; }
       progress.index = i; save();
+      replayMode = !!opts.replay;
+
       const v = VIDEOS[i];
       nowTitle.textContent = "Now playing — " + v.title;
       player.src = v.src;
       nextBtn.disabled = true;
       prevBtn.disabled = (i === 0);
-      // reset allowed seek; we will restore from watched
-      maxAllowed = progress.per[i].watched || 0;
-      player.currentTime = maxAllowed;
-      player.play().catch(()=>{}); // autoplay may be blocked; user can press play
+
+      if (replayMode) {
+        maxAllowed = Infinity;  // allow free seek
+        player.currentTime = 0;
+      } else {
+        maxAllowed = progress.per[i].watched || 0;
+        player.currentTime = maxAllowed;
+      }
+      player.play().catch(()=>{});
       renderList();
     }
 
-    // time + anti-seek handlers
     player.addEventListener("loadedmetadata", ()=>{
+      if (!VIDEOS.length) return;
       const i = progress.index;
       progress.per[i].dur = player.duration || progress.per[i].dur;
       timeDur.textContent = fmt(progress.per[i].dur);
-      // allow resuming where they left off, but not beyond
-      const resumeAt = Math.min(progress.per[i].watched, player.duration - 1);
-      player.currentTime = resumeAt;
-      maxAllowed = resumeAt;
+
+      if (!replayMode) {
+        const resumeAt = Math.min(progress.per[i].watched, Math.max(0,(player.duration||1)-1));
+        player.currentTime = resumeAt;
+        maxAllowed = resumeAt;
+      } else {
+        player.currentTime = 0;
+      }
       timeCur.textContent = fmt(player.currentTime);
     });
 
     player.addEventListener("timeupdate", ()=>{
+      if (!VIDEOS.length) return;
       const i = progress.index;
       const cur = player.currentTime || 0;
       timeCur.textContent = fmt(cur);
-      // grow allowed window if they genuinely watched forward
-      if(cur > maxAllowed) maxAllowed = cur;
-      // record watched time as the max of what they've genuinely reached
-      progress.per[i].watched = Math.max(progress.per[i].watched, maxAllowed);
-      save();
-      renderList();
+      if (!replayMode) {
+        if(cur > maxAllowed) maxAllowed = cur;
+        progress.per[i].watched = Math.max(progress.per[i].watched, maxAllowed);
+        save();
+        renderList();
+      }
     });
 
-    // prevent skipping ahead
+    // prevent skipping ahead only in normal (non-replay) mode
     player.addEventListener("seeking", ()=>{
-      const i = progress.index;
+      if (replayMode || !VIDEOS.length) return;
       const target = player.currentTime || 0;
-      if(target > maxAllowed + 1){ // tiny grace
-        player.currentTime = maxAllowed;
-      }
+      if(target > maxAllowed + 1){ player.currentTime = maxAllowed; }
     });
 
     player.addEventListener("ended", ()=>{
+      if (!VIDEOS.length) return;
       const i = progress.index;
       const dur = progress.per[i].dur || player.duration || 0;
-      // consider completed if watched 98%+
-      if(maxAllowed >= 0.98 * dur){
-        progress.per[i].done = true; save();
-        renderList();
-        nextBtn.disabled = (i >= VIDEOS.length - 1);
-        // auto-advance after a moment if not last
-        if(i < VIDEOS.length - 1){
-          setTimeout(()=> load(i+1), 800);
-        } else {
-          updateOverall(); // triggers webhook if final
+
+      if (!replayMode) {
+        if((Math.max(maxAllowed, player.currentTime)) >= 0.98 * dur){
+          progress.per[i].done = true; save(); renderList();
+          nextBtn.disabled = (i >= VIDEOS.length - 1);
+          if(i < VIDEOS.length - 1){ setTimeout(()=> load(i+1), 600); }
+          else { updateOverall(); }
         }
       } else {
-        // they scrubbed back near the end; require last seconds
-        nextBtn.disabled = true;
+        // in replay mode: do nothing automatic
+        nextBtn.disabled = !(progress.per[i].done) || i >= VIDEOS.length - 1;
       }
     });
 
-    // prev/next
+    // controls
     nextBtn.addEventListener("click", ()=>{
       const i = progress.index;
       if(i < VIDEOS.length - 1) load(i+1);
     });
     prevBtn.addEventListener("click", ()=>{
       const i = progress.index;
-      if(i > 0) load(i-1);
+      if(i > 0) load(i-1, { replay:false });
+    });
+    restartBtn.addEventListener("click", ()=>{
+      const i = progress.index;
+      load(i, { replay:true });
     });
 
-    // enable Next only when current is marked done
+    // unlock Next when marked done (outside replay)
     setInterval(()=>{
+      if (!VIDEOS.length) return;
       const i = progress.index;
-      nextBtn.disabled = !progress.per[i].done || i >= VIDEOS.length - 1;
+      nextBtn.disabled = (!progress.per[i].done && !replayMode) || i >= VIDEOS.length - 1;
     }, 400);
 
-    // kick things off
-    load(progress.index);
+    // init
+    if (!VIDEOS.length){
+      // show empty state
+      renderList();
+      nowTitle.textContent = "No videos to play";
+      nextBtn.disabled = prevBtn.disabled = restartBtn.disabled = true;
+      timeCur.textContent = "0:00"; timeDur.textContent = "0:00";
+    } else {
+      renderList();
+      load(Math.min(progress.index, VIDEOS.length-1), { replay:false });
+    }
   </script>
 </body>
 </html>
