@@ -4,7 +4,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Training Access</title>
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root { font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    body { margin: 0; background: #fff; }
+    .card { max-width: 720px; margin: 2rem auto; background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.08); }
+    label { display: block; margin: 0 0 1rem; font-weight: 600; }
+    input { display: block; width: 100%; margin-top: .25rem; padding: .6rem .75rem; border: 1px solid #d0d6dd; border-radius: 8px; }
+    button { padding: .6rem 1rem; border: 0; border-radius: 8px; background: black; color: white; font-weight: 700; cursor: pointer; }
+    .link { text-decoration: none; font-weight: 600; }
+    .link:hover { text-decoration: underline; }
+    .error { color: #c62828; font-weight: 600; margin-top: .75rem; }
+    .muted { color: #6b7280; margin-top: .75rem; }
+  </style>
 </head>
 <body>
   <main class="card">
@@ -28,25 +39,22 @@
     </form>
   </main>
 
-  <!-- Inline gate (no external file needed) -->
   <script>
-  // --- config ---
-  const PASSWORD_PLAIN = "cooldemo";                       // quick, reliable check
+  // --- Config ---
+  const PASSWORD_PLAIN = "cooldemo";
   const EMAIL_OWNER = "Kenley.richardson@gmail.com";
-  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyB23AOVKrraH3h23YR-QCrrl5pVO4qUWDX1tmp84htriq0xxKDqwA0wHCNK15rHAMh/exec"; // set in step 2
+  const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyB23AOVKrraH3h23YR-QCrrl5pVO4qUWDX1tmp84htriq0xxKDqwA0wHCNK15rHAMh/exec";
 
-  // Minimal gate helpers
+  // --- Helpers ---
   window.gate = (() => {
     function isAuthed(){ return sessionStorage.getItem('authed') === 'true'; }
     function requireAuthOrRedirect(){ if(!isAuthed()) location.href = "index.html"; }
     return { isAuthed, requireAuthOrRedirect };
   })();
 
-  // Render help link
   document.getElementById('help').innerHTML =
     `Need help? <a href="mailto:${encodeURIComponent(EMAIL_OWNER)}?subject=${encodeURIComponent('Training access help')}">Email ${EMAIL_OWNER}</a>`;
 
-  // Handle submit
   const form = document.getElementById('gateForm');
   const nameInput = document.getElementById('name');
   const passInput = document.getElementById('password');
@@ -61,11 +69,10 @@
 
     try {
       if (pass === PASSWORD_PLAIN) {
-        // mark session
         sessionStorage.setItem('authed', 'true');
         sessionStorage.setItem('visitorName', name);
 
-        // fire-and-forget email webhook (don’t block the redirect)
+        // Send webhook email
         try {
           fetch(WEBHOOK_URL, {
             method: "POST",
@@ -78,9 +85,9 @@
               page: location.href
             })
           });
-        } catch (_) { /* ignore */ }
+        } catch (_) {}
 
-        // go to videos
+        // Go to videos page
         location.href = "videos.html";
       } else {
         errorEl.textContent = "Incorrect password. Please try again.";
