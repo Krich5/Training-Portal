@@ -95,8 +95,8 @@
   </main>
 
   <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzWSJyQjOE27h-ObOOQMVkL2qT-fgT6jGwfVKfqs_zq6Bzc0x-serwvLJq9Yg1Cm7EW/exec";
-  const ADMIN_TOKEN = "CHANGE_ME_ADMIN_TOKEN"; // must match SECRET_TOKEN
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyRDEhgIvlnPmjIxnqDQB_PitNu87HCAl29y_7TmAvPm4Buvf_9TaaIQTDmUECVivxE/exec";
+  const ADMIN_TOKEN = "CHANGE_ME_ADMIN_TOKEN"; // must match SECRET_TOKEN in Apps Script
   const ADMIN_PASS  = "cooladmin";
 
   const gate = document.getElementById('gate');
@@ -127,17 +127,28 @@
     try{
       const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ mode:'addCompany', token: ADMIN_TOKEN, company: name }) });
-      const data = await res.json();
-      if (!data.ok) { alert('Error: ' + (data.error||'unknown')); return; }
+      const text = await res.text();
+      let data; try { data = JSON.parse(text); } catch { data = null; }
+      if (!res.ok || !data || data.ok !== true) {
+        alert(text === 'UNAUTHORIZED' ? 'Token mismatch or old deployment.\nMake sure ADMIN_TOKEN === SECRET_TOKEN and redeploy.' : 'Server error: ' + text);
+        return;
+      }
       await loadCustomers();
       alert(`Codes for "${data.company}":\nAgent: ${data.agent}\nSupervisor: ${data.supervisor}\nAdmin: ${data.admin}`);
-    }catch(e){ alert('Server error'); }
+    }catch(e){ alert('Network error'); }
   });
+
   async function loadCustomers(){
     custBody.innerHTML = `<tr><td colspan="6" class="center muted">Loading…</td></tr>`;
     try{
       const res = await fetch(`${SCRIPT_URL}?mode=customers&token=${encodeURIComponent(ADMIN_TOKEN)}`);
-      const data = await res.json(); const rows = (data && data.rows) ? data.rows : [];
+      const text = await res.text();
+      if (text === 'UNAUTHORIZED') {
+        custBody.innerHTML = `<tr><td colspan="6" class="center error">UNAUTHORIZED — set ADMIN_TOKEN to match SECRET_TOKEN and redeploy.</td></tr>`;
+        return;
+      }
+      const data = JSON.parse(text);
+      const rows = (data && data.rows) ? data.rows : [];
       if (!rows.length){ custBody.innerHTML = `<tr><td colspan="6" class="center muted">No companies yet.</td></tr>`; return; }
       custBody.innerHTML = rows.map(r=>`
         <tr>
@@ -149,7 +160,7 @@
           <td>${r.created_ts||''}</td>
         </tr>`).join('');
     }catch(e){
-      custBody.innerHTML = `<tr><td colspan="6" class="center error">Failed to load customers (check token/URL/deployment)</td></tr>`;
+      custBody.innerHTML = `<tr><td colspan="6" class="center error">Network error while loading customers.</td></tr>`;
     }
   }
 
