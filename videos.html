@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Training Videos</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="card">
+    <header class="row">
+      <h1>Training Videos</h1>
+      <button id="logout">Log out</button>
+    </header>
+
+    <p>Welcome, <strong id="who"></strong>!</p>
+
+    <!-- Example playlist -->
+    <section class="videos">
+      <article class="video">
+        <h2>Module 1 — Introduction</h2>
+        <!-- Use your own MP4s (large repo) or embed from YouTube/Vimeo (lighter). -->
+        <!-- Example YouTube embed: -->
+        <div class="embed">
+          <iframe width="560" height="315"
+                  src="https://www.youtube.com/embed/VIDEO_ID"
+                  title="Module 1"
+                  frameborder="0"
+                  allowfullscreen></iframe>
+        </div>
+      </article>
+
+      <article class="video">
+        <h2>Module 2 — Deep Dive</h2>
+        <div class="embed">
+          <iframe width="560" height="315"
+                  src="https://www.youtube.com/embed/ANOTHER_VIDEO_ID"
+                  title="Module 2"
+                  frameborder="0"
+                  allowfullscreen></iframe>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="gate.js"></script>
+  <script>
+    // Block direct access if not authed
+    window.gate.requireAuthOrRedirect();
+
+    // Personalize with the stored name
+    document.getElementById('who').textContent = sessionStorage.getItem('visitorName') || "guest";
+
+    // Logout button clears session and returns to gate
+    document.getElementById('logout').addEventListener('click', () => {
+      sessionStorage.removeItem('authed');
+      sessionStorage.removeItem('visitorName');
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>
