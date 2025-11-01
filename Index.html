@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Training Access</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>Training Series</h1>
+    <p>Please enter your name and the access password.</p>
+
+    <form id="gateForm">
+      <label>
+        Your name
+        <input id="name" name="name" type="text" required />
+      </label>
+
+      <label>
+        Password
+        <input id="password" name="password" type="password" inputmode="text" required />
+      </label>
+
+      <button type="submit">Enter</button>
+      <p id="error" class="error" role="alert" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script src="gate.js"></script>
+  <script>
+    // >>> Replace this with your own SHA-256 hex of the password <<<
+    const PASSWORD_HASH = "REPLACE_ME_WITH_SHA256_HEX";
+
+    const form = document.getElementById('gateForm');
+    const nameInput = document.getElementById('name');
+    const passInput = document.getElementById('password');
+    const errorEl = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+
+      const name = nameInput.value.trim();
+      const pass = passInput.value;
+
+      try {
+        const hash = await window.gate.sha256Hex(pass);
+        if (hash === PASSWORD_HASH) {
+          sessionStorage.setItem('authed', 'true');
+          sessionStorage.setItem('visitorName', name);
+          // go to videos page
+          window.location.href = "videos.html";
+        } else {
+          errorEl.textContent = "Incorrect password. Please try again.";
+        }
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = "Something went wrong. Please try again.";
+      }
+    });
+  </script>
+</body>
+</html>
