@@ -1,4 +1,4 @@
-// gate.js
+<script>
 window.gate = (() => {
   async function sha256Hex(str) {
     const enc = new TextEncoder();
@@ -20,3 +20,4 @@ window.gate = (() => {
 
   return { sha256Hex, isAuthed, requireAuthOrRedirect };
 })();
+</script>
