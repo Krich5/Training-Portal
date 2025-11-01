@@ -37,6 +37,7 @@
   </header>
 
   <main>
+    <!-- Admin password entry -->
     <section id="gate" class="card">
       <div class="centerBox">
         <div class="row">
@@ -48,6 +49,7 @@
       <div class="centerBox"><div id="gateErr" class="error" style="margin-top:8px"></div></div>
     </section>
 
+    <!-- Companies list -->
     <section id="customers" class="card" style="display:none">
       <div class="row" style="justify-content:space-between">
         <div class="row">
@@ -59,4 +61,136 @@
       <div style="overflow:auto">
         <table>
           <thead><tr><th>Company</th><th>Agent code</th><th>Supervisor code</th><th>Admin code</th><th>Active</th><th>Created</th></tr></thead>
-          <tbody id="custBody"><tr><td colspan="6" class="muted" style="padding:18px">Loading…</td></tr></
+          <tbody id="custBody"><tr><td colspan="6" class="muted" style="padding:18px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Training logs -->
+    <section id="panel" class="card" style="display:none;margin-top:18px">
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <span class="pill">Rows: <span id="rowCount">0</span></span>
+          <select id="typeFilter"><option value="">All types</option><option value="signin">signin</option><option value="completion">completion</option></select>
+          <input id="courseFilter" placeholder="Course (e.g., agent)"/>
+          <input id="search" placeholder="Search name/UA/page/company"/>
+          <button id="refresh" class="btn secondary">Refresh</button>
+          <button id="downloadCsv" class="btn secondary">Download CSV</button>
+        </div>
+        <button id="logout" class="btn">Log out</button>
+      </div>
+      <div style="overflow:auto">
+        <table id="tbl">
+          <thead><tr>
+            <th>ts_server</th><th>type</th><th>name</th><th>course</th><th>company</th>
+            <th>ts_client</th><th>page</th><th>ua</th><th>videos_json</th>
+          </tr></thead>
+          <tbody id="tbody"><tr><td colspan="9" class="muted" style="padding:18px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Config shared -->
+  <script src="config.js"></script>
+  <script>
+  const { SCRIPT_URL, ADMIN_TOKEN, ADMIN_PASS } = window.APP_CONFIG || {};
+  const gate=document.getElementById('gate'),panel=document.getElementById('panel'),customers=document.getElementById('customers');
+  const gateErr=document.getElementById('gateErr'),ADMIN_OK_KEY="training_admin_ok";
+
+  function showApp(){gate.style.display='none';customers.style.display='';panel.style.display='';loadCustomers();loadLogs();}
+  function showGate(){gate.style.display='';customers.style.display='none';panel.style.display='none';}
+
+  document.getElementById('adminBtn').addEventListener('click',()=>{
+    const val=document.getElementById('adminPass').value.trim();
+    gateErr.textContent="";
+    if(val===ADMIN_PASS){sessionStorage.setItem(ADMIN_OK_KEY,"true");showApp();}
+    else{gateErr.textContent="Incorrect password.";}
+  });
+
+  const doLogout=()=>{sessionStorage.removeItem(ADMIN_OK_KEY);location.href='index.html';};
+  document.getElementById('logout').onclick=doLogout;
+  document.getElementById('logoutTop').onclick=doLogout;
+  if(sessionStorage.getItem(ADMIN_OK_KEY)==="true"){showApp();}
+
+  // ---- Customers ----
+  const custBody=document.getElementById('custBody');
+  document.getElementById('refreshCustomersBtn').onclick=loadCustomers;
+  document.getElementById('addCompanyBtn').onclick=async()=>{
+    const name=prompt('Company name');if(!name)return;
+    try{
+      const res=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'addCompany',token:ADMIN_TOKEN,company:name})});
+      const text=await res.text();let data;try{data=JSON.parse(text);}catch{}
+      if(!res.ok||!data||data.ok!==true){
+        alert(text==='UNAUTHORIZED'?'Token mismatch or old deployment.\nMake sure ADMIN_TOKEN === SECRET_TOKEN and redeploy.':'Server error: '+text);
+        return;
+      }
+      await loadCustomers();
+      alert(`Codes for "${data.company}":\nAgent: ${data.agent}\nSupervisor: ${data.supervisor}\nAdmin: ${data.admin}`);
+    }catch(e){alert('Network error');}
+  };
+
+  async function loadCustomers(){
+    custBody.innerHTML=`<tr><td colspan="6" class="muted" style="padding:18px">Loading…</td></tr>`;
+    try{
+      const url=`${SCRIPT_URL}?mode=customers&token=${encodeURIComponent(ADMIN_TOKEN)}`;
+      const res=await fetch(url);const text=await res.text();
+      if(!res.ok){custBody.innerHTML=`<tr><td colspan="6" class="error">HTTP ${res.status}<br>${text.slice(0,200)}</td></tr>`;return;}
+      if(text==='UNAUTHORIZED'){custBody.innerHTML=`<tr><td colspan="6" class="error">UNAUTHORIZED — check ADMIN_TOKEN.</td></tr>`;return;}
+      const data=JSON.parse(text);const rows=(data&&data.rows)?data.rows:[];
+      if(!rows.length){custBody.innerHTML=`<tr><td colspan="6" class="muted" style="padding:18px">No companies yet.</td></tr>`;return;}
+      custBody.innerHTML=rows.map(r=>`<tr>
+        <td>${r.company||''}</td>
+        <td><code>${r.agent_code||''}</code></td>
+        <td><code>${r.supervisor_code||''}</code></td>
+        <td><code>${r.admin_code||''}</code></td>
+        <td>${String(r.active).toLowerCase()!=='false'?'Yes':'No'}</td>
+        <td>${r.created_ts||''}</td>
+      </tr>`).join('');
+    }catch(e){custBody.innerHTML=`<tr><td colspan="6" class="error">Network error while loading customers.</td></tr>`;}
+  }
+
+  // ---- Logs ----
+  const tbody=document.getElementById('tbody'),rowCount=document.getElementById('rowCount');
+  const typeFilter=document.getElementById('typeFilter'),courseFilter=document.getElementById('courseFilter'),search=document.getElementById('search');
+  document.getElementById('refresh').onclick=loadLogs;
+  document.getElementById('downloadCsv').onclick=()=>{
+    const a=document.createElement('a');
+    a.href=`${SCRIPT_URL}?mode=csv&token=${encodeURIComponent(ADMIN_TOKEN)}&limit=5000`;
+    a.download='training_logs.csv';
+    a.click();
+  };
+  let allRows=[];
+  async function loadLogs(){
+    tbody.innerHTML=`<tr><td colspan="9" class="muted" style="padding:18px">Loading…</td></tr>`;
+    try{
+      const url=`${SCRIPT_URL}?mode=json&token=${encodeURIComponent(ADMIN_TOKEN)}&limit=2000`;
+      const res=await fetch(url);const text=await res.text();
+      if(!res.ok){tbody.innerHTML=`<tr><td colspan="9" class="error">HTTP ${res.status}<br>${text.slice(0,200)}</td></tr>`;return;}
+      if(text==='UNAUTHORIZED'){tbody.innerHTML=`<tr><td colspan="9" class="error">UNAUTHORIZED — token mismatch.</td></tr>`;return;}
+      const data=JSON.parse(text);allRows=(data&&data.rows)?data.rows:[];renderLogs();
+    }catch(e){tbody.innerHTML=`<tr><td colspan="9" class="error">Failed to load logs.</td></tr>`;}
+  }
+  function renderLogs(){
+    const t=s=>(s==null||s==="")?"":String(s);
+    const q=search.value.trim().toLowerCase(),tf=typeFilter.value.trim().toLowerCase(),cf=courseFilter.value.trim().toLowerCase();
+    const rows=allRows.filter(r=>{
+      const okType=!tf||t(r.type).toLowerCase()===tf;
+      const okCourse=!cf||t(r.course).toLowerCase().includes(cf);
+      const text=(t(r.name)+" "+t(r.ua)+" "+t(r.page)+" "+t(r.company)).toLowerCase();
+      return okType&&okCourse&&(!q||text.includes(q));
+    });
+    rowCount.textContent=String(rows.length);
+    if(!rows.length){tbody.innerHTML=`<tr><td colspan="9" class="muted" style="padding:18px">No rows.</td></tr>`;return;}
+    tbody.innerHTML=rows.map(r=>`<tr>
+      <td>${r.ts_server||''}</td><td>${r.type||''}</td><td>${r.name||''}</td><td>${r.course||''}</td>
+      <td>${r.company||''}</td><td>${r.ts_client||''}</td><td>${r.page||''}</td>
+      <td class="muted">${r.ua||''}</td><td><code style="font-size:.85rem">${r.videos_json||''}</code></td>
+    </tr>`).join('');
+  }
+  typeFilter.addEventListener('change',renderLogs);
+  courseFilter.addEventListener('input',renderLogs);
+  search.addEventListener('input',renderLogs);
+  </script>
+</body>
+</html>
