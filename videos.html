@@ -64,6 +64,7 @@
     </div>
 
     <section class="shell">
+      <!-- Player -->
       <section class="card">
         <div id="nowTitle" class="muted" style="margin:0 0 6px">Now playing</div>
         <div class="embed"><video id="player" class="player"
@@ -86,6 +87,7 @@
         </div>
       </section>
 
+      <!-- Playlist -->
       <aside class="card">
         <h3 style="margin:0 0 10px">Playlist</h3>
         <ul id="list" class="list" aria-label="Training playlist"></ul>
@@ -95,6 +97,7 @@
   </main>
 
   <script>
+    // Auth + greeting
     const AUTH_KEY="training_authed", NAME_KEY="training_visitor_name";
     if(localStorage.getItem(AUTH_KEY)!=="true"){
       location.href=new URL("index.html",location.href).toString();
@@ -102,9 +105,11 @@
     const viewerName = localStorage.getItem(NAME_KEY) || "guest";
     document.getElementById("who").textContent = viewerName;
 
+    // Which course?
     const params = new URLSearchParams(location.search);
     const COURSE_KEY = params.get('course') || 'agent';
 
+    // Playlists
     const COURSES = {
       agent: [
         { id:"v1", title:"Agent Login (Desktop)", src:"AgentVideos/Agent%20Login%20(Desktop).mp4" },
@@ -115,17 +120,19 @@
         { id:"v6", title:"Sign Out",              src:"AgentVideos/Sign%20Out.mp4" }
       ],
       supervisor: [
-        // { id:"s1", title:"Supervisor Intro", src:"SupervisorVideos/Intro.mp4" },
+        { id:"s1", title:"Supervisor Walkthrough", src:"SupVideos/IMG_3339.mov" }
       ],
       admin: [
+        // Add Admin videos later as needed
         // { id:"a1", title:"Admin Overview", src:"AdminVideos/Overview.mp4" },
       ]
     };
     const VIDEOS = COURSES[COURSE_KEY] || COURSES.agent;
 
-    // NEW webhook URL (completion)
+    // Completion webhook (latest URL)
     const COMPLETION_WEBHOOK="https://script.google.com/macros/s/AKfycbzWftfQypoGfeZLQZGX8tE5JdlNQzLsAvG3Vo7tVEqm_LWh50H6flr962FCVcyUcXAe/exec";
 
+    // UI refs
     const player = document.getElementById("player");
     const nowTitle = document.getElementById("nowTitle");
     const timeCur = document.getElementById("timeCur");
@@ -143,11 +150,13 @@
       location.href=new URL("index.html",location.href).toString();
     });
 
+    // Progress (per course)
     const STORAGE_KEY="training_progress_v2_" + COURSE_KEY;
     let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if(!progress){ progress = { index: 0, per: (VIDEOS.length? VIDEOS: []).map(()=>({watched:0,dur:0,done:false})) }; save(); }
     function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
 
+    // Helpers
     const fmt = s => { s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), r=String(s%60).padStart(2,"0"); return `${m}:${r}`; };
 
     function updateOverall(){
@@ -199,6 +208,7 @@
       updateOverall();
     }
 
+    // Player logic (anti-skip + replay mode)
     let maxAllowed = 0;
     let replayMode = false;
 
@@ -293,6 +303,7 @@
       nextBtn.disabled = (!progress.per[i].done && !replayMode) || i >= VIDEOS.length - 1;
     }, 400);
 
+    // Init
     if (!VIDEOS.length){
       renderList();
       nowTitle.textContent = "No videos to play";
