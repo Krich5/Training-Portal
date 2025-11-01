@@ -32,8 +32,25 @@ th{position:sticky;top:0;background:var(--input);z-index:1}
 .muted{color:var(--muted)}
 .err{color:#f87171;font-weight:700}
 </style>
-<script src="config.js?v=31"></script>
+
+<!-- Try to load external config -->
+<script src="config.js?v=1001"></script>
+
+<!-- Fallback config if the above fails or is stale -->
 <script>
+(function ensureConfig(){
+  const FALLBACK_URL = "https://script.google.com/macros/s/AKfycbzANcSixCAEfvqcj7fOfAQn7TaHkeYcOh3msNSeuwkK2eKwdLTqgQ0U9jCJXSyrswJW/exec"; // <- fixed "https://"
+  if (!window.APP_CONFIG || !window.APP_CONFIG.SCRIPT_URL) {
+    window.APP_CONFIG = {
+      SCRIPT_URL: FALLBACK_URL,
+      ADMIN_TOKEN: "CXASTrainingPortal25",
+      ADMIN_PASS:  "cooladmin",
+      BRAND:       "Training Portal",
+      TIMEZONE:    "America/New_York"
+    };
+    console.warn("Using FALLBACK APP_CONFIG (config.js missing or stale).");
+  }
+})();
 (function themeBoot(){
   const saved = localStorage.getItem('tp_theme');
   if(saved) document.documentElement.setAttribute('data-theme', saved);
@@ -48,7 +65,6 @@ th{position:sticky;top:0;background:var(--input);z-index:1}
     <div class="right">
       <button id="themeBtn" class="toggle">Dark</button>
       <button id="logoutBtn" class="btn" style="display:none">Log out</button>
-      <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="Logo" style="height:36px;margin-left:8px">
     </div>
   </div>
 </header>
@@ -106,15 +122,17 @@ th{position:sticky;top:0;background:var(--input);z-index:1}
 
 <script>
 const cfg = window.APP_CONFIG;
-document.getElementById('themeBtn').addEventListener('click', ()=>{
+
+// Theme toggle
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.textContent = (document.documentElement.getAttribute('data-theme')||'dark')==='dark'?'Dark':'Light';
+themeBtn.addEventListener('click', ()=>{
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
   const nxt = cur==='dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', nxt);
   localStorage.setItem('tp_theme', nxt);
-  document.getElementById('themeBtn').textContent = nxt==='dark'?'Dark':'Light';
+  themeBtn.textContent = nxt==='dark'?'Dark':'Light';
 });
-document.getElementById('themeBtn').textContent =
-  (document.documentElement.getAttribute('data-theme')||'dark')==='dark'?'Dark':'Light';
 
 // Gate (always ask)
 const gate = document.getElementById('gate');
@@ -123,20 +141,19 @@ const logs = document.getElementById('logs');
 const gateErr = document.getElementById('gateErr');
 const logoutBtn = document.getElementById('logoutBtn');
 
-function showApp(){
-  gate.style.display='none'; customers.style.display=''; logs.style.display='';
-  logoutBtn.style.display='';
-  loadCustomers(); loadLogs();
-}
-function showGate(){
-  gate.style.display=''; customers.style.display='none'; logs.style.display='none';
-  logoutBtn.style.display='none';
-}
+function showApp(){ gate.style.display='none'; customers.style.display=''; logs.style.display=''; logoutBtn.style.display=''; loadCustomers(); loadLogs(); }
+function showGate(){ gate.style.display=''; customers.style.display='none'; logs.style.display='none'; logoutBtn.style.display='none'; }
+
 document.getElementById('adminBtn').addEventListener('click', ()=>{
   gateErr.textContent = '';
-  const val = document.getElementById('adminPass').value;
-  if(val === cfg.ADMIN_PASS) showApp();
-  else gateErr.textContent = 'Incorrect password.';
+  const val = (document.getElementById('adminPass').value || '').trim();
+  if (!cfg || !cfg.ADMIN_PASS) {
+    gateErr.textContent = 'config.js missing — using fallback. Try again.';
+    // still allow using fallback:
+    if (val === "cooladmin") showApp();
+    return;
+  }
+  if(val === cfg.ADMIN_PASS) showApp(); else gateErr.textContent = 'Incorrect password.';
 });
 logoutBtn.addEventListener('click', ()=>{ showGate(); });
 
@@ -146,17 +163,30 @@ document.getElementById('refreshCustomersBtn').addEventListener('click', loadCus
 document.getElementById('addCompanyBtn').addEventListener('click', async ()=>{
   const name = prompt('Company name'); if(!name) return;
   try{
-    const res = await fetch(cfg.SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ mode:'addCompany', token: cfg.ADMIN_TOKEN, company: name }) });
+    // simple request (no preflight)
+    const res = await fetch(cfg.SCRIPT_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=UTF-8' },
+      body: JSON.stringify({ mode:'addCompany', token: cfg.ADMIN_TOKEN, company: name })
+    });
     const text = await res.text(); let data; try{ data = JSON.parse(text);}catch{ data=null; }
     if(!res.ok || !data || data.ok!==true){
-      alert((text==='UNAUTHORIZED') ? 'Unauthorized (check ADMIN_TOKEN vs SECRET_TOKEN and redeploy)' : 'Server error: '+text);
+      // GET fallback
+      const getRes = await fetch(`${cfg.SCRIPT_URL}?mode=addCompany&token=${encodeURIComponent(cfg.ADMIN_TOKEN)}&company=${encodeURIComponent(name)}`);
+      const getText = await getRes.text(); let getData; try{ getData = JSON.parse(getText);}catch{ getData=null; }
+      if(!getRes.ok || !getData || getData.ok!==true){
+        alert((getText==='UNAUTHORIZED'||text==='UNAUTHORIZED') ? 'Unauthorized (check ADMIN_TOKEN vs SECRET_TOKEN and redeploy)' : 'Server error.');
+        return;
+      }
+      await loadCustomers();
+      alert(`Codes for "${getData.company}":\nAgent: ${getData.agent}\nSupervisor: ${getData.supervisor}\nAdmin: ${getData.admin}`);
       return;
     }
     await loadCustomers();
     alert(`Codes for "${data.company}":\nAgent: ${data.agent}\nSupervisor: ${data.supervisor}\nAdmin: ${data.admin}`);
-  }catch(e){ alert('Network error: '+(e?.message||'')); }
+  }catch(e){ alert('Network error'); }
 });
+
 async function loadCustomers(){
   custBody.innerHTML = `<tr><td colspan="6" class="muted" style="padding:18px">Loading…</td></tr>`;
   try{
@@ -176,7 +206,7 @@ async function loadCustomers(){
         <td>${r.created_ts||''}</td>
       </tr>`).join('');
   }catch(e){
-    custBody.innerHTML = `<tr><td colspan="6" class="err" style="padding:18px">Network error while loading customers. ${e?.message||''}</td></tr>`;
+    custBody.innerHTML = `<tr><td colspan="6" class="err" style="padding:18px">Network error while loading customers.</td></tr>`;
   }
 }
 
@@ -188,7 +218,7 @@ let allRows = [];
 function fmtEST(iso){
   try{
     return new Date(iso).toLocaleString('en-US', {
-      timeZone: cfg.TIMEZONE||'America/New_York',
+      timeZone: (cfg && cfg.TIMEZONE) || 'America/New_York',
       year:'2-digit', month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true
     }) + ' EST';
   }catch{ return iso||''; }
