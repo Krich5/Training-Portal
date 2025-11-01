@@ -24,13 +24,21 @@
 
       <button type="submit">Enter</button>
       <p id="error" class="error" role="alert" aria-live="polite"></p>
+      <p class="muted" id="help"></p>
     </form>
   </main>
 
   <script src="gate.js"></script>
   <script>
-    // >>> Replace this with your own SHA-256 hex of the password <<<
-    const PASSWORD_HASH = "REPLACE_ME_WITH_SHA256_HEX";
+    // Contact email used for the "Need help?" link
+    const EMAIL_OWNER = "Kenley.richardson@gmail.com";
+
+    // SHA-256 hex of the password "cooldemo"
+    const PASSWORD_HASH = "788bc5fd95b5e47d37924a6d369ff9a7b809a62e91c4b05e18e38bac4b61309c";
+
+    // Render the help mailto link
+    const help = document.getElementById('help');
+    help.innerHTML = `Need help? <a href="mailto:${encodeURIComponent(EMAIL_OWNER)}?subject=${encodeURIComponent('Training access help')}">Email ${EMAIL_OWNER}</a>`;
 
     const form = document.getElementById('gateForm');
     const nameInput = document.getElementById('name');
@@ -47,12 +55,18 @@
       try {
         const hash = await window.gate.sha256Hex(pass);
         if (hash === PASSWORD_HASH) {
+          // lightweight "session"
           sessionStorage.setItem('authed', 'true');
           sessionStorage.setItem('visitorName', name);
-          // go to videos page
+
+          // (optional) simple local log (not sent anywhere)
+          const logs = JSON.parse(localStorage.getItem('accessLogs') || "[]");
+          logs.push({ name, ts: new Date().toISOString() });
+          localStorage.setItem('accessLogs', JSON.stringify(logs));
+
           window.location.href = "videos.html";
         } else {
-          errorEl.textContent = "Incorrect password. Please try again.";
+          errorEl.innerHTML = `Incorrect password. Please try again or <a href="mailto:${encodeURIComponent(EMAIL_OWNER)}?subject=${encodeURIComponent('Issue accessing training')}&body=${encodeURIComponent('Hi,\n\nI am unable to access the training page.\n\nThanks,')}">contact support</a>.`;
         }
       } catch (err) {
         console.error(err);
