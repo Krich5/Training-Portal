@@ -59,7 +59,7 @@
 
   <main>
     <div class="titleRow" style="margin-bottom:10px">
-      <h1 style="margin:0">Training Videos</h1>
+      <h1 id="pageTitle" style="margin:0">Training Videos</h1>
       <div class="muted">Welcome, <strong id="who"></strong></div>
     </div>
 
@@ -109,6 +109,14 @@
     const params = new URLSearchParams(location.search);
     const COURSE_KEY = params.get('course') || 'agent';
 
+    // Update page title dynamically
+    const titleMap = {
+      agent: "Agent Training Videos",
+      supervisor: "Supervisor Training Videos",
+      admin: "Admin Training Videos"
+    };
+    document.getElementById("pageTitle").textContent = titleMap[COURSE_KEY] || "Training Videos";
+
     // Playlists
     const COURSES = {
       agent: [
@@ -124,12 +132,11 @@
       ],
       admin: [
         // Add Admin videos later as needed
-        // { id:"a1", title:"Admin Overview", src:"AdminVideos/Overview.mp4" },
       ]
     };
     const VIDEOS = COURSES[COURSE_KEY] || COURSES.agent;
 
-    // Completion webhook (latest URL)
+    // Completion webhook (latest)
     const COMPLETION_WEBHOOK="https://script.google.com/macros/s/AKfycbzWftfQypoGfeZLQZGX8tE5JdlNQzLsAvG3Vo7tVEqm_LWh50H6flr962FCVcyUcXAe/exec";
 
     // UI refs
@@ -150,13 +157,12 @@
       location.href=new URL("index.html",location.href).toString();
     });
 
-    // Progress (per course)
+    // Progress tracking
     const STORAGE_KEY="training_progress_v2_" + COURSE_KEY;
     let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if(!progress){ progress = { index: 0, per: (VIDEOS.length? VIDEOS: []).map(()=>({watched:0,dur:0,done:false})) }; save(); }
     function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
 
-    // Helpers
     const fmt = s => { s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), r=String(s%60).padStart(2,"0"); return `${m}:${r}`; };
 
     function updateOverall(){
@@ -202,13 +208,13 @@
         right.innerHTML = progress.per[i].done ? `<span class="check">✓</span>` : `<span class="muted">${fmt(progress.per[i].watched)}</span>`;
         li.append(left, right);
         li.style.cursor = "pointer";
-        li.addEventListener("click", ()=> load(i, { replay: true })); // manual select = replay
+        li.addEventListener("click", ()=> load(i, { replay: true }));
         listEl.appendChild(li);
       });
       updateOverall();
     }
 
-    // Player logic (anti-skip + replay mode)
+    // Anti-skip logic
     let maxAllowed = 0;
     let replayMode = false;
 
