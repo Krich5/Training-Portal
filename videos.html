@@ -18,53 +18,46 @@
 
     <p>Welcome, <strong id="who"></strong>!</p>
 
-    <!-- Example playlist -->
+    <!-- Replace these with your real embeds -->
     <section class="videos">
       <article class="video">
         <h2>Module 1 — Introduction</h2>
         <div class="embed">
-          <!-- Replace VIDEO_ID with your video -->
           <iframe width="560" height="315"
                   src="https://www.youtube.com/embed/VIDEO_ID"
-                  title="Module 1"
-                  frameborder="0"
-                  allowfullscreen></iframe>
+                  title="Module 1" frameborder="0" allowfullscreen></iframe>
         </div>
       </article>
-
       <article class="video">
         <h2>Module 2 — Deep Dive</h2>
         <div class="embed">
           <iframe width="560" height="315"
                   src="https://www.youtube.com/embed/ANOTHER_VIDEO_ID"
-                  title="Module 2"
-                  frameborder="0"
-                  allowfullscreen></iframe>
+                  title="Module 2" frameborder="0" allowfullscreen></iframe>
         </div>
       </article>
     </section>
   </main>
 
-  <script src="gate.js"></script>
   <script>
-    // Block direct access if not authed
+    // protect page
+    window.gate = window.gate || { isAuthed:()=>false, requireAuthOrRedirect:()=>{location.href="index.html"} };
     window.gate.requireAuthOrRedirect();
 
-    // Personalize with the stored name
     document.getElementById('who').textContent = sessionStorage.getItem('visitorName') || "guest";
 
-    // Contact link targets Kenley's email
+    // contact link
     const EMAIL_OWNER = "Kenley.richardson@gmail.com";
     document.getElementById('contact').setAttribute(
       'href',
       `mailto:${encodeURIComponent(EMAIL_OWNER)}?subject=${encodeURIComponent('Question about training videos')}`
     );
 
-    // Logout clears session
+    // logout
     document.getElementById('logout').addEventListener('click', () => {
       sessionStorage.removeItem('authed');
       sessionStorage.removeItem('visitorName');
-      window.location.href = "index.html";
+      location.href = "index.html";
     });
   </script>
 </body>
