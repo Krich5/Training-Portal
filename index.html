@@ -13,7 +13,7 @@
     .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
     .left{justify-self:start}
     .center{justify-self:center;text-align:center}
-    .right{justify-self:end}
+    .right{justify-self=end}
     .brand{font-weight:800;letter-spacing:.2px;font-size:1.1rem}
     .logo{height:36px}
     .btnLink{background:#0e1525;color:var(--fg);border:1px solid var(--border); font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
@@ -26,7 +26,7 @@
     input:focus{box-shadow:0 0 0 3px rgba(59,130,246,.25)}
     .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d; font-weight:800;padding:10px 18px;border-radius:12px;cursor:pointer;margin-top:12px;width:120px}
     .btn:active{transform:translateY(1px)}
-    .error{color:#f87171;font-weight:700;margin-top:.75rem;text-align:center;min-height:1.2em}
+    .error{color:#f87171;font-weight:700;margin-top:.75rem;text-align:center;min-height:1.2em;white-space:pre-wrap}
     footer{color:#93a3ba;text-align:center;font-size:.85rem;padding:18px}
   </style>
 </head>
@@ -59,19 +59,33 @@
 
   <footer>© <span id="yr"></span> Training</footer>
 
-  <script src="config.js?v=v2"></script>
+  <!-- NO config.js while reverting -->
   <script>
+  // === Use a single, known-good URL here (must end with /exec) ===
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
   document.getElementById("yr").textContent=new Date().getFullYear();
+
+  const errEl = document.getElementById("error");
+
+  // Quick ping on load to surface backend issues immediately
+  (async ()=>{
+    try{
+      const ping = await fetch(SCRIPT_URL + "?mode=ping").then(r=>r.text());
+      if (ping !== "OK" && ping !== '{"ok":true}' && ping.toUpperCase() !== "OK") {
+        errEl.textContent = "Backend ping unexpected:\n" + ping;
+      }
+    }catch(e){
+      errEl.textContent = "Backend unreachable. Check SCRIPT_URL or deployment.";
+    }
+  })();
 
   document.getElementById("gateForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("name").value.trim();
     const code = document.getElementById("code").value.trim().toUpperCase();
-    const errorEl = document.getElementById("error");
-    errorEl.textContent = "";
+    errEl.textContent = "";
 
-    if (!name || !code){ errorEl.textContent = "Please fill out both fields."; return; }
+    if (!name || !code){ errEl.textContent = "Please fill out both fields."; return; }
 
     try{
       const res = await fetch(SCRIPT_URL, {
@@ -79,16 +93,22 @@
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ mode:"validate", code })
       });
-      const raw = await res.text();
-      let data;
-      try { data = JSON.parse(raw); } catch { data = null; }
 
-      if (!res.ok || !data) {
-        errorEl.textContent = raw || "Server error. Please try again.";
+      const raw = await res.text();
+      let data = null;
+      try { data = JSON.parse(raw); } catch {}
+
+      if (!res.ok) {
+        errEl.textContent = `HTTP ${res.status} — ${raw.slice(0,160)}`;
+        return;
+      }
+      if (!data) {
+        // Show what came back so you can see if it’s UNAUTHORIZED, HTML error, etc.
+        errEl.textContent = `Unexpected response:\n${raw.slice(0,400)}`;
         return;
       }
       if (!data.ok){
-        errorEl.textContent = data.error || "Invalid or inactive code.";
+        errEl.textContent = data.error || "Invalid or inactive code.";
         return;
       }
 
@@ -96,6 +116,7 @@
       const company = data.company || "";
       sessionStorage.setItem('tp_user', JSON.stringify({ name, course, company }));
 
+      // Fire-and-forget signin log
       fetch(SCRIPT_URL, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
@@ -106,8 +127,8 @@
       }).catch(()=>{});
 
       location.href = "videos.html";
-    }catch{
-      errorEl.textContent = "Server error. Please try again.";
+    }catch(err){
+      errEl.textContent = "Server error. Please try again.";
     }
   });
   </script>
