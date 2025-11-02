@@ -13,7 +13,7 @@
     .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
     .left{justify-self:start}
     .center{justify-self:center;text-align:center}
-    .right{justify-self=end}
+    .right{justify-self:end}
     .brand{font-weight:800;letter-spacing:.2px;font-size:1.1rem}
     .logo{height:36px}
     .btnLink{background:#0e1525;color:var(--fg);border:1px solid var(--border); font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
@@ -27,6 +27,7 @@
     .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d; font-weight:800;padding:10px 18px;border-radius:12px;cursor:pointer;margin-top:12px;width:120px}
     .btn:active{transform:translateY(1px)}
     .error{color:#f87171;font-weight:700;margin-top:.75rem;text-align:center;min-height:1.2em;white-space:pre-wrap}
+    .diag{font-size:.9rem;color:#cdd7ea;background:#0e1525;border:1px solid var(--border);border-radius:12px;padding:10px;margin:12px 0;white-space:pre-wrap}
     footer{color:#93a3ba;text-align:center;font-size:.85rem;padding:18px}
   </style>
 </head>
@@ -46,6 +47,8 @@
       <h1>CXAS Training Portal</h1>
       <p class="lead">Enter your name and your 10-character access code.</p>
 
+      <div id="diag" class="diag" style="display:none"></div>
+
       <form id="gateForm" novalidate>
         <label for="name">Your name</label>
         <input id="name" name="name" type="text" placeholder="Jane Doe" required />
@@ -59,23 +62,26 @@
 
   <footer>© <span id="yr"></span> Training</footer>
 
-  <!-- NO config.js while reverting -->
   <script>
-  // === Use a single, known-good URL here (must end with /exec) ===
+  // === Single known-good URL (must end with /exec) ===
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
   document.getElementById("yr").textContent=new Date().getFullYear();
-
   const errEl = document.getElementById("error");
+  const diagEl = document.getElementById("diag");
 
-  // Quick ping on load to surface backend issues immediately
+  function diag(msg){
+    diagEl.style.display = "block";
+    diagEl.textContent = msg;
+  }
+
+  // Ping on load so you immediately see backend status in-page
   (async ()=>{
     try{
-      const ping = await fetch(SCRIPT_URL + "?mode=ping").then(r=>r.text());
-      if (ping !== "OK" && ping !== '{"ok":true}' && ping.toUpperCase() !== "OK") {
-        errEl.textContent = "Backend ping unexpected:\n" + ping;
-      }
+      const r = await fetch(SCRIPT_URL + "?mode=ping");
+      const t = await r.text();
+      diag("Ping: " + t);
     }catch(e){
-      errEl.textContent = "Backend unreachable. Check SCRIPT_URL or deployment.";
+      diag("Ping failed: " + (e && e.message ? e.message : String(e)));
     }
   })();
 
@@ -98,19 +104,9 @@
       let data = null;
       try { data = JSON.parse(raw); } catch {}
 
-      if (!res.ok) {
-        errEl.textContent = `HTTP ${res.status} — ${raw.slice(0,160)}`;
-        return;
-      }
-      if (!data) {
-        // Show what came back so you can see if it’s UNAUTHORIZED, HTML error, etc.
-        errEl.textContent = `Unexpected response:\n${raw.slice(0,400)}`;
-        return;
-      }
-      if (!data.ok){
-        errEl.textContent = data.error || "Invalid or inactive code.";
-        return;
-      }
+      if (!res.ok) { errEl.textContent = `HTTP ${res.status} — ${raw.slice(0,200)}`; return; }
+      if (!data)    { errEl.textContent = `Unexpected response:\n${raw.slice(0,400)}`; return; }
+      if (!data.ok) { errEl.textContent = data.error || "Invalid or inactive code."; return; }
 
       const course  = data.course;
       const company = data.company || "";
@@ -128,7 +124,7 @@
 
       location.href = "videos.html";
     }catch(err){
-      errEl.textContent = "Server error. Please try again.";
+      errEl.textContent = "Fetch failed: " + (err && err.message ? err.message : String(err));
     }
   });
   </script>
