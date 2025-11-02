@@ -6,22 +6,42 @@
 <title>Training Videos</title>
 <meta name="color-scheme" content="dark">
 <style>
-  :root{ --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --input:#0e1525; --border:rgba(255,255,255,.08); --accentA:#22d3ee; --accentB:#3b82f6; }
+  :root{
+    --bg:#0b1020; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5; --input:#0e1525;
+    --border:rgba(255,255,255,.08); --accentA:#22d3ee; --accentB:#3b82f6; --ok:#34d399; --warn:#f59e0b;
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:ui-sans-serif,system-ui;background:#0b1020;color:#e9edf5;min-height:100vh}
+  body{margin:0;font-family:ui-sans-serif,system-ui;background:var(--bg);color:var(--fg);min-height:100vh}
   header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
   .btnLink{background:var(--input);color:var(--fg);border:1px solid var(--border);font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
   .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
   .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
   .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
   h1,h2{margin:6px 0 12px 0}
   .muted{color:var(--muted)}
   video{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px}
+  /* overall progress */
+  .overall{margin:10px 0 6px 0;font-weight:700}
+  .bar{height:10px;background:var(--input);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+  .bar>span{display:block;height:100%;width:0%;background:linear-gradient(135deg,var(--accentA),var(--accentB))}
+  /* per-video progress (tiny) */
+  .pbar{height:6px;background:var(--input);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin-top:6px}
+  .pbar>span{display:block;height:100%;width:0%;background:var(--accentB)}
+  /* playlist */
   ul{list-style:none;margin:0;padding:0}
-  .item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--input);margin-bottom:8px;cursor:pointer}
-  .item.active{outline:2px solid var(--accentB)}
+  .item{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--input);margin-bottom:10px;cursor:pointer}
+  .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
   .badge{font-size:.8rem;color:var(--muted)}
-  .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d;font-weight:800;padding:8px 14px;border-radius:10px;cursor:pointer}
+  .item.active{outline:2px solid var(--accentB)}
+  .done{color:var(--ok);font-weight:800}
+  /* toast */
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0b1222;border:1px solid var(--border);padding:10px 12px;border-radius:10px;color:#fff;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+  /* modal */
+  .modalBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;max-width:420px;width:92%}
+  .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d;font-weight:800;padding:10px 16px;border-radius:12px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -35,8 +55,13 @@
     <div class="grid">
       <section class="card">
         <h2 id="courseTitle" class="muted">Loading…</h2>
+
+        <div class="overall" id="overallText">0% complete</div>
+        <div class="bar"><span id="overallBar"></span></div>
+
         <video id="player" controls playsinline></video>
       </section>
+
       <aside class="card">
         <h2>Playlist</h2>
         <ul id="list"></ul>
@@ -45,15 +70,28 @@
     </div>
   </div>
 
+  <div id="toast" class="toast">You can’t skip ahead yet.</div>
+
+  <!-- Completion modal -->
+  <div id="doneWrap" class="modalBackdrop">
+    <div class="modal">
+      <h2>Nice! You’re all done ✅</h2>
+      <p>Your completion has been recorded.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+        <button class="btn" id="closeDone">Close</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-// ==== CONFIG ====
+/* ====== CONFIG ====== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
 
-// ==== USER SESSION ====
+/* ====== USER CONTEXT ====== */
 const user = (()=>{ try{ return JSON.parse(sessionStorage.getItem('tp_user')||'null'); }catch{ return null; }})();
 if(!user){ location.href='index.html'; }
 
-// ==== PLAYLISTS ====
+/* ====== PLAYLISTS ====== */
 function playlistFor(course){
   if(course === 'agent'){
     return [
@@ -70,53 +108,125 @@ function playlistFor(course){
   return [];
 }
 
-// ==== UI Hooks & State ====
-const listEl = document.getElementById('list');
+/* ====== UI HOOKS ====== */
+const listEl   = document.getElementById('list');
 const statusEl = document.getElementById('status');
-const player = document.getElementById('player');
+const player   = document.getElementById('player');
 const courseTitle = document.getElementById('courseTitle');
+const toast = document.getElementById('toast');
+const doneWrap = document.getElementById('doneWrap');
+document.getElementById('closeDone').addEventListener('click', ()=> doneWrap.style.display='none');
+const overallText = document.getElementById('overallText');
+const overallBar  = document.getElementById('overallBar');
 
+/* ====== STATE ====== */
 const vids = playlistFor(user.course);
 let idx = 0;
-let finished = new Array(vids.length).fill(false);
-let jumping = false;
+let finished = vids.map(()=>false);
+// per-video max allowed (in seconds). You can always rewind <= this value.
+let maxSeen = vids.map(()=>0);
 
-courseTitle.textContent = `${user.company} — ${user.course[0].toUpperCase()+user.course.slice(1)} Training`;
+/* ====== HELPERS ====== */
+function showToast(msg){
+  toast.textContent = msg || "You can’t skip ahead yet.";
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 1200);
+}
+function pct(n){ return Math.max(0,Math.min(100,Math.round(n))); }
+function updateOverall(){
+  const total = vids.length;
+  const done = finished.filter(Boolean).length;
+  const percent = pct((done/total)*100);
+  overallText.textContent = `${percent}% complete`;
+  overallBar.style.width = `${percent}%`;
+  statusEl.textContent = `${done}/${total} videos completed`;
+}
 
+/* ====== RENDER LIST ====== */
 function renderList(){
   listEl.innerHTML = vids.map((v,i)=>`
     <li class="item ${i===idx?'active':''}" data-i="${i}">
-      <span>${i+1}. ${v.title}</span>
-      <span class="badge">${finished[i] ? 'done' : ''}</span>
+      <div class="row">
+        <div>
+          <div>${i+1}. ${v.title}</div>
+          <div class="badge ${finished[i]?'done':''}">${finished[i]?'done':''}</div>
+        </div>
+        <div style="min-width:120px;flex:1">
+          <div class="pbar"><span id="pbar-${i}" style="width:${pct((maxSeen[i] / (v._dur||1))*100)}%"></span></div>
+        </div>
+      </div>
     </li>`).join('');
+
   listEl.querySelectorAll('.item').forEach(el=>{
     el.addEventListener('click', ()=>{
       const i = Number(el.getAttribute('data-i'));
-      if(i===idx){ player.currentTime=0; player.play(); return; }
-      idx=i; loadCurrent(true);
+      if (i === idx){ player.currentTime = 0; player.play(); return; }
+      idx = i; loadCurrent(true);
     });
   });
-  const done = finished.filter(Boolean).length;
-  statusEl.textContent = `${done}/${vids.length} completed`;
+  updateOverall();
 }
 
+/* ====== LOAD CURRENT VIDEO ====== */
 function loadCurrent(autoplay){
-  jumping = true;
   player.src = vids[idx].src;
   player.currentTime = 0;
-  if(autoplay) player.play();
+  // allow only what we’ve seen so far
+  // (duration unknown until metadata; we update progress once loaded)
   renderList();
-  setTimeout(()=> jumping=false, 200);
+  // Scroll active item into view on mobile
+  const active = listEl.querySelector('.item.active');
+  if (active) active.scrollIntoView({block:'nearest', behavior:'smooth'});
+  if (autoplay) player.play();
 }
 
-player.addEventListener('ended', ()=>{
-  if (jumping) return;
-  finished[idx] = true;
-  const allDone = finished.every(Boolean);
+/* ====== SEEK GUARD ====== */
+let blockSeek = false;
 
-  if(allDone){
+player.addEventListener('loadedmetadata', ()=>{
+  vids[idx]._dur = player.duration || vids[idx]._dur || 0;
+  // clamp maxSeen to duration in case duration is shorter than previous value
+  maxSeen[idx] = Math.min(maxSeen[idx], player.duration || maxSeen[idx]);
+  renderList();
+});
+
+player.addEventListener('timeupdate', ()=>{
+  // grow maxSeen as they watch
+  if (!isFinite(player.duration) || player.duration === 0) return;
+
+  if (player.currentTime > maxSeen[idx]){
+    maxSeen[idx] = player.currentTime;
+    const bar = document.getElementById(`pbar-${idx}`);
+    if (bar) bar.style.width = `${pct((maxSeen[idx]/player.duration)*100)}%`;
+  }
+
+  // mark finished near the end (with small buffer)
+  if (!finished[idx] && player.duration - player.currentTime <= 0.75){
+    finished[idx] = true;
+    updateOverall();
+    renderList();
+  }
+});
+
+// Prevent skipping ahead beyond what’s watched
+player.addEventListener('seeking', ()=>{
+  if (blockSeek) return;
+  const allowed = Math.max(0, maxSeen[idx] + 0.5); // small grace
+  if (player.currentTime > allowed){
+    blockSeek = true;
+    player.currentTime = allowed;
+    setTimeout(()=>{ blockSeek=false; }, 0);
+    showToast("You can’t skip ahead yet.");
+  }
+});
+
+/* ====== END HANDLER ====== */
+player.addEventListener('ended', ()=>{
+  // If all videos finished, record completion
+  const allDone = finished.every(Boolean);
+  if (allDone){
     const videos_json = vids.map((v,i)=>({ index:i, title:v.title, src:v.src }));
-    // NO header to avoid CORS preflight
+    // Post without custom headers to avoid CORS preflight
     fetch(SCRIPT_URL, {
       method:'POST',
       body: JSON.stringify({
@@ -129,14 +239,27 @@ player.addEventListener('ended', ()=>{
         ua: navigator.userAgent,
         videos_json
       })
-    }).catch(()=>{});
+    }).catch(()=>{ /* best-effort */ });
+
+    // show confirmation
+    doneWrap.style.display = 'flex';
+  } else {
+    // advance to next video automatically
+    if (idx < vids.length-1){
+      idx++;
+      loadCurrent(true);
+    }
   }
-  if(idx < vids.length-1){ idx++; loadCurrent(true); } else { renderList(); }
 });
 
-// Boot
-if(!vids.length){ statusEl.textContent='No videos assigned for this course yet.'; }
-else { loadCurrent(false); renderList(); }
+/* ====== BOOT ====== */
+courseTitle.textContent = `${user.company} — ${user.course[0].toUpperCase()+user.course.slice(1)} Training`;
+if (!vids.length){
+  statusEl.textContent = 'No videos assigned for this course yet.';
+} else {
+  loadCurrent(false);
+  renderList();
+}
 </script>
 </body>
 </html>
