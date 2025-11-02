@@ -26,9 +26,9 @@
     input:focus{box-shadow:0 0 0 3px rgba(59,130,246,.25)}
     .btn{background:linear-gradient(135deg,var(--accentA),var(--accentB));border:none;color:#06111d; font-weight:800;padding:10px 18px;border-radius:12px;cursor:pointer;margin-top:12px;width:120px}
     .btn:active{transform:translateY(1px)}
-    .error{color:#f87171;font-weight:700;margin-top:.75rem;text-align:center;min-height:1.2em;white-space:pre-wrap}
-    .diag{font-size:.9rem;color:#cdd7ea;background:#0e1525;border:1px solid var(--border);border-radius:12px;padding:10px;margin:12px 0;white-space:pre-wrap}
+    .error{color:#f87171;font-weight:700;margin-top:.75rem;text-align:center;min-height:1.2em}
     footer{color:#93a3ba;text-align:center;font-size:.85rem;padding:18px}
+    .ping{font-size:.9rem;color:var(--muted);margin:.25rem 0 1rem;text-align:left;background:#0d1528;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
   </style>
 </head>
 <body>
@@ -47,7 +47,7 @@
       <h1>CXAS Training Portal</h1>
       <p class="lead">Enter your name and your 10-character access code.</p>
 
-      <div id="diag" class="diag" style="display:none"></div>
+      <div id="ping" class="ping">Checking backend…</div>
 
       <form id="gateForm" novalidate>
         <label for="name">Your name</label>
@@ -62,36 +62,33 @@
 
   <footer>© <span id="yr"></span> Training</footer>
 
+  <!-- load config with cache-busting -->
+  <script src="config.js?v=v3"></script>
   <script>
-  // === Single known-good URL (must end with /exec) ===
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
-  document.getElementById("yr").textContent=new Date().getFullYear();
-  const errEl = document.getElementById("error");
-  const diagEl = document.getElementById("diag");
+  const cfg = window.APP_CONFIG || {};
+  const SCRIPT_URL = cfg.SCRIPT_URL;
+  document.getElementById("yr").textContent = new Date().getFullYear();
 
-  function diag(msg){
-    diagEl.style.display = "block";
-    diagEl.textContent = msg;
+  // hard fail if config missing
+  if (!SCRIPT_URL) {
+    document.getElementById("ping").textContent = "Config error: SCRIPT_URL missing. Check config.js";
+  } else {
+    // quick GET to prove we’re talking to the right deployment
+    fetch(SCRIPT_URL + "?mode=ping")
+      .then(r => r.text())
+      .then(t => { document.getElementById("ping").textContent = "Ping: " + t; })
+      .catch(() => { document.getElementById("ping").textContent = "Ping failed (network/CORS)."; });
   }
-
-  // Ping on load so you immediately see backend status in-page
-  (async ()=>{
-    try{
-      const r = await fetch(SCRIPT_URL + "?mode=ping");
-      const t = await r.text();
-      diag("Ping: " + t);
-    }catch(e){
-      diag("Ping failed: " + (e && e.message ? e.message : String(e)));
-    }
-  })();
 
   document.getElementById("gateForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("name").value.trim();
     const code = document.getElementById("code").value.trim().toUpperCase();
-    errEl.textContent = "";
+    const errorEl = document.getElementById("error");
+    errorEl.textContent = "";
 
-    if (!name || !code){ errEl.textContent = "Please fill out both fields."; return; }
+    if (!SCRIPT_URL) { errorEl.textContent = "Config error: SCRIPT_URL missing."; return; }
+    if (!name || !code){ errorEl.textContent = "Please fill out both fields."; return; }
 
     try{
       const res = await fetch(SCRIPT_URL, {
@@ -99,20 +96,17 @@
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ mode:"validate", code })
       });
-
       const raw = await res.text();
-      let data = null;
-      try { data = JSON.parse(raw); } catch {}
+      let data; try { data = JSON.parse(raw); } catch { data = null; }
 
-      if (!res.ok) { errEl.textContent = `HTTP ${res.status} — ${raw.slice(0,200)}`; return; }
-      if (!data)    { errEl.textContent = `Unexpected response:\n${raw.slice(0,400)}`; return; }
-      if (!data.ok) { errEl.textContent = data.error || "Invalid or inactive code."; return; }
+      if (!res.ok || !data) { errorEl.textContent = raw || "Server error. Please try again."; return; }
+      if (!data.ok) { errorEl.textContent = data.error || "Invalid or inactive code."; return; }
 
       const course  = data.course;
       const company = data.company || "";
       sessionStorage.setItem('tp_user', JSON.stringify({ name, course, company }));
 
-      // Fire-and-forget signin log
+      // fire-and-forget sign-in log
       fetch(SCRIPT_URL, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
@@ -124,7 +118,8 @@
 
       location.href = "videos.html";
     }catch(err){
-      errEl.textContent = "Fetch failed: " + (err && err.message ? err.message : String(err));
+      // Mobile Safari often reports “Load failed” on CORS issues
+      document.getElementById("error").textContent = "Fetch failed: " + (err?.message || "Load failed");
     }
   });
   </script>
