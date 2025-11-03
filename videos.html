@@ -18,28 +18,21 @@
   .right{justify-self:end;color:var(--muted);font-weight:600}
   .btnLink{background:var(--input);color:var(--fg);border:1px solid var(--border);font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
   .wrap{max-width:1200px;margin:22px auto;padding:0 16px}
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
   h2{margin:6px 0 12px 0}
   .muted{color:var(--muted)}
+  video{width:100%;aspect-ratio:16/9;background:#000;border-radius:14px}
 
-  /* Player area */
-  #player{width:100%;aspect-ratio:16/9;background:#000;border-radius:14px}
-  .controls{display:flex;align-items:center;gap:10px;margin-top:8px;background:var(--input);border:1px solid var(--border);border-radius:12px;padding:8px}
-  .btn{border:1px solid var(--border);background:var(--card);color:var(--fg);padding:8px 10px;border-radius:10px;cursor:pointer}
-  .btn[disabled]{opacity:.5;cursor:not-allowed}
-  .time{font-variant-numeric:tabular-nums;color:var(--muted)}
-  .grow{flex:1}
-  .track{position:relative;height:10px;background:#0b1325;border:1px solid var(--border);border-radius:10px;cursor:pointer;overflow:hidden}
-  .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(135deg,var(--accentA),var(--accentB));width:0%}
-  .seen{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.15);width:0%}
-  .handle{position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:#fff;transform:translateX(-7px)}
-  .hint{font-size:.9rem;color:var(--muted);margin-top:6px}
+  /* Progress */
+  .prog{margin-top:12px;background:var(--input);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .bar{height:10px;background:linear-gradient(135deg,var(--accentA),var(--accentB));width:0%}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
 
   /* Playlist */
-  #playlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  #playlist{display:flex;flex-direction:column;gap:10px}
   .item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--input);cursor:pointer}
   .item.active{outline:2px solid var(--accentB)}
-  .item.locked{opacity:.55;cursor:not-allowed}
   .badge{font-size:.8rem;color:var(--muted)}
   .badge.done{color:var(--ok);font-weight:700}
 </style>
@@ -47,50 +40,31 @@
 <body>
   <header>
     <div class="left"><a class="btnLink" href="index.html">← Back</a></div>
-    <div class="center" id="hdrCourse">Training</div>
+    <div class="center" id="hdr">CXAS Training Portal</div>
     <div class="right" id="who"></div>
   </header>
 
   <div class="wrap">
-    <section class="card">
-      <h2 id="videoTitle">Loading…</h2>
-      <video id="player" playsinline preload="metadata"
-             controlslist="nodownload noplaybackrate noremoteplayback"
-             disablepictureinpicture></video>
+    <div class="grid">
+      <section class="card">
+        <h2 id="videoTitle">Loading…</h2>
+        <video id="player" controls playsinline preload="metadata"
+               controlsList="nodownload noremoteplayback"
+               disablepictureinpicture></video>
 
-      <!-- Custom controls -->
-      <div class="controls" id="controls">
-        <button class="btn" id="play">Play</button>
-        <button class="btn" id="rew">-10s</button>
-        <button class="btn" id="fwd">+10s</button>
-        <div class="grow" id="barWrap">
-          <div class="track" id="track" aria-label="progress">
-            <div class="seen" id="seen"></div>
-            <div class="fill" id="fill"></div>
-            <div class="handle" id="handle" style="left:0%"></div>
-          </div>
-        </div>
-        <div class="time" id="tt">0:00 / 0:00</div>
-        <button class="btn" id="mute">Mute</button>
-      </div>
+        <div class="prog" aria-label="overall progress"><div id="bar" class="bar"></div></div>
+        <div class="row"><div id="progText" class="muted">0/0 completed</div><div id="hint" class="muted"></div></div>
+      </section>
 
-      <div class="hint" id="lockHint"></div>
-
-      <div class="card" style="margin-top:14px;padding:10px">
-        <div class="track" id="overallTrack" aria-label="overall progress"><div class="fill" id="overallFill" style="height:10px"></div></div>
-        <div class="muted" id="overallText" style="margin-top:6px">0/0 completed</div>
-      </div>
-    </section>
-
-    <section class="card" style="margin-top:18px">
-      <h2>Playlist</h2>
-      <div id="playlist"></div>
-      <div class="hint" id="playlistNote"></div>
-    </section>
+      <aside class="card">
+        <h2>Playlist</h2>
+        <div id="playlist"></div>
+      </aside>
+    </div>
   </div>
 
 <script>
-/* ====== CONFIG ====== */
+/* ====== BACKEND URL (same one your admin uses) ====== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
 
 /* ====== USER CONTEXT ====== */
@@ -98,7 +72,6 @@ const user = (()=>{ try{ return JSON.parse(sessionStorage.getItem('tp_user')||'n
 if(!user){ location.href='index.html'; }
 document.getElementById('who').textContent = `${user.name} — ${user.company}`;
 const courseNice = user.course.charAt(0).toUpperCase()+user.course.slice(1);
-document.getElementById('hdrCourse').textContent = `${courseNice} Training`;
 document.title = `${courseNice} Training — ${user.company}`;
 
 /* ====== PLAYLISTS ====== */
@@ -119,183 +92,83 @@ function playlistFor(course){
 }
 
 /* ====== UI HOOKS ====== */
-const player = document.getElementById('player');
-const playBtn = document.getElementById('play');
-const rewBtn  = document.getElementById('rew');
-const fwdBtn  = document.getElementById('fwd');
-const muteBtn = document.getElementById('mute');
-const track   = document.getElementById('track');
-const fill    = document.getElementById('fill');
-const seenEl  = document.getElementById('seen');
-const handle  = document.getElementById('handle');
-const timeTxt = document.getElementById('tt');
+const listEl   = document.getElementById('playlist');
+const player   = document.getElementById('player');
 const videoTitle = document.getElementById('videoTitle');
-const lockHint = document.getElementById('lockHint');
-
-const listEl = document.getElementById('playlist');
-const overallFill = document.getElementById('overallFill');
-const overallText = document.getElementById('overallText');
-const playlistNote = document.getElementById('playlistNote');
+const bar = document.getElementById('bar');
+const progText = document.getElementById('progText');
+const hint = document.getElementById('hint');
 
 /* ====== STATE ====== */
 const vids = playlistFor(user.course);
 let idx = 0;
 let completed = new Array(vids.length).fill(false);
-let unlocked = false;
-let maxSeen = 0; // seconds for current video
 
-/* ====== HELPERS ====== */
-const fmt = s => {
-  s = Math.max(0, Math.floor(s||0));
-  const m = Math.floor(s/60), ss = s%60;
-  return `${m}:${ss.toString().padStart(2,'0')}`;
-};
-function setLockedUI(on){
-  // native controls OFF while locked; ON when unlocked
-  player.controls = !on;
-  lockHint.textContent = on ? 'First pass: You can rewind but cannot fast-forward.' : '';
-  fwdBtn.disabled = on;   // disable +10s when locked
-}
-function nextPlayableIndex(){
-  const firstTodo = completed.findIndex(x=>!x);
-  return firstTodo === -1 ? vids.length-1 : firstTodo;
-}
+/* ====== RENDER ====== */
 function overall(){
   const done = completed.filter(Boolean).length;
-  overallText.textContent = `${done}/${vids.length} completed`;
-  overallFill.style.width = `${(done/Math.max(1,vids.length))*100}%`;
-  playlistNote.textContent = unlocked
-    ? 'All videos complete — you can jump and seek freely.'
-    : 'Please watch in order the first time through.';
+  progText.textContent = `${done}/${vids.length} completed`;
+  bar.style.width = `${(done/Math.max(1,vids.length))*100}%`;
+  hint.textContent = done===vids.length ? 'All Done — feel free to rewatch anything.' : '';
 }
 function renderList(){
   listEl.innerHTML = vids.map((v,i)=>`
-    <button class="item ${i===idx?'active':''} ${!unlocked && i>nextPlayableIndex() ? 'locked':''}" data-i="${i}">
+    <button class="item ${i===idx?'active':''}" data-i="${i}">
       <span>${i+1}. ${v.title}</span>
       <span class="badge ${completed[i]?'done':''}">${completed[i]?'Done':''}</span>
     </button>`).join('');
   listEl.querySelectorAll('.item').forEach(el=>{
-    el.addEventListener('click',()=>{
+    el.addEventListener('click', ()=>{
       const i = Number(el.getAttribute('data-i'));
-      if (!unlocked && i > nextPlayableIndex()) return; // ignore
       if (i === idx){ player.currentTime = 0; player.play(); return; }
-      idx=i; loadCurrent(true);
+      idx = i; loadCurrent(true);
     });
   });
   overall();
 }
-function updateBar(){
-  const d = player.duration || 0, t = player.currentTime || 0;
-  const pct = d ? (t/d)*100 : 0;
-  fill.style.width = `${pct}%`;
-  handle.style.left = `${pct}%`;
-  const seenPct = d ? (Math.max(maxSeen, t)/d)*100 : 0;
-  seenEl.style.width = `${seenPct}%`;
-  timeTxt.textContent = `${fmt(t)} / ${fmt(d)}`;
-}
-
-/* Clamp any attempt to jump ahead beyond maxSeen (first pass only) */
-function clampForward(){
-  if (unlocked) return;
-  const allowed = Math.max(0, maxSeen - 0.15);
-  if ((player.currentTime||0) > allowed + 0.2) {
-    player.currentTime = allowed;
-  }
-}
 
 /* ====== LOAD CURRENT VIDEO ====== */
 function loadCurrent(autoplay){
-  maxSeen = 0;
-  setLockedUI(!unlocked);
   player.src = vids[idx].src;
   videoTitle.textContent = vids[idx].title;
   player.onloadedmetadata = ()=>{
-    player.currentTime = 0;
-    updateBar();
     if (autoplay) player.play();
   };
   renderList();
 }
 
 /* ====== EVENTS ====== */
-playBtn.addEventListener('click', ()=> {
-  if (player.paused) { player.play(); playBtn.textContent='Pause'; }
-  else { player.pause(); playBtn.textContent='Play'; }
-});
-player.addEventListener('play', ()=> playBtn.textContent='Pause');
-player.addEventListener('pause', ()=> playBtn.textContent='Play');
-
-rewBtn.addEventListener('click', ()=> { player.currentTime = Math.max(0,(player.currentTime||0)-10); });
-fwdBtn.addEventListener('click', ()=> {
-  if (unlocked) player.currentTime = Math.min(player.duration||0,(player.currentTime||0)+10);
-});
-muteBtn.addEventListener('click', ()=> {
-  player.muted = !player.muted;
-  muteBtn.textContent = player.muted ? 'Unmute' : 'Mute';
-});
-
-/* Track clicking / dragging (never beyond maxSeen while locked) */
-function posToTime(clientX){
-  const r = track.getBoundingClientRect();
-  const ratio = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
-  let target = (player.duration||0) * ratio;
-  if (!unlocked) target = Math.min(target, Math.max(0, maxSeen - 0.1));
-  return target;
-}
-let dragging = false;
-track.addEventListener('pointerdown', (e)=>{ dragging=true; player.currentTime = posToTime(e.clientX); });
-window.addEventListener('pointermove', (e)=>{ if(dragging){ player.currentTime = posToTime(e.clientX); }});
-window.addEventListener('pointerup',   ()=> dragging=false);
-
-/* Guard all other seek paths during first pass */
-player.addEventListener('seeking', clampForward);
-player.addEventListener('seeked',  clampForward);
-
-/* Grow maxSeen while playing (first pass only) */
-player.addEventListener('timeupdate', ()=>{
-  if (!unlocked) maxSeen = Math.max(maxSeen, player.currentTime||0);
-  updateBar();
-});
-
-/* Disallow >1x on first pass + block keyboard FF */
-player.addEventListener('ratechange', ()=>{ if (!unlocked && player.playbackRate>1) player.playbackRate=1; });
-window.addEventListener('keydown', (e)=>{
-  if (!unlocked && (e.key==='ArrowRight' || e.key==='l' || e.code==='KeyL')) e.preventDefault();
-});
-
-/* On end: mark done, advance or unlock everything */
 player.addEventListener('ended', ()=>{
-  completed[idx]=true;
+  completed[idx] = true;
   const allDone = completed.every(Boolean);
-
-  if (allDone && !unlocked){
-    unlocked = true;
-    setLockedUI(false);
-    // Log completion
+  if (allDone){
     const videos_json = vids.map((v,i)=>({ index:i, title:v.title, src:v.src }));
     fetch(SCRIPT_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         mode:'completion',
-        name:user.name, course:user.course, company:user.company,
-        ts_client: Date.now(), page:'videos', ua:navigator.userAgent, videos_json
+        name:user.name,
+        course:user.course,
+        company:user.company,
+        ts_client: Date.now(),
+        page:'videos',
+        ua:navigator.userAgent,
+        videos_json
       })
     }).catch(()=>{});
-  } else {
-    const next = completed.findIndex(x=>!x);
-    if (next !== -1) idx = next;
+  } else if (idx < vids.length - 1){
+    idx++;
   }
   loadCurrent(true);
 });
 
 /* ====== BOOT ====== */
-const vids = playlistFor(user.course);
 if (!vids.length){
   videoTitle.textContent = 'No videos assigned for this course yet.';
-  document.getElementById('controls').style.display='none';
 } else {
   loadCurrent(false);
-  overall();
+  renderList();
 }
 </script>
 </body>
