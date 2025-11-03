@@ -30,7 +30,6 @@ input,select{border-radius:10px;border:1px solid var(--border);background:var(--
 table{width:100%;border-collapse:separate;border-spacing:0;margin-top:12px;min-width:900px}
 th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
 th{position:sticky;top:0;background:#0e1525;z-index:1}
-.pill{font-size:.8rem;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#0e1525;color:var(--muted)}
 .muted{color:var(--muted)}
 .error{color:#f87171;font-weight:700;text-align:left}
 .actionCell{white-space:nowrap}
@@ -63,7 +62,6 @@ th{position:sticky;top:0;background:#0e1525;z-index:1}
         <button id="addCompanyBtn" class="btn">Add customer</button>
         <button id="refreshCustomersBtn" class="btn secondary">Refresh</button>
       </div>
-      <!-- no logout here -->
     </div>
     <div style="overflow:auto">
       <table>
@@ -131,7 +129,8 @@ document.getElementById('addCompanyBtn').addEventListener('click', async ()=>{
   const name = prompt('Customer name'); if (!name) return;
   try{
     const res = await fetch(SCRIPT_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST',
+      // no headers -> avoids CORS preflight on Apps Script
       body: JSON.stringify({ mode:'addCompany', token: ADMIN_TOKEN, company: name })
     });
     const text = await res.text(); let data; try { data = JSON.parse(text); } catch { data = null; }
@@ -146,26 +145,19 @@ document.getElementById('addCompanyBtn').addEventListener('click', async ()=>{
 
 async function revokeCustomer(company){
   if (!confirm(`Revoke access for "${company}"?`)) return;
-
   try{
     const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      // IMPORTANT: no headers -> no CORS preflight; Apps Script can still read the body
-      body: JSON.stringify({ mode: 'revokeCompany', token: ADMIN_TOKEN, company })
+      method:'POST',
+      // no headers -> avoids CORS preflight on Apps Script
+      body: JSON.stringify({ mode:'revokeCompany', token: ADMIN_TOKEN, company })
     });
-
-    const text = await res.text();
-    let data; try { data = JSON.parse(text); } catch { data = null; }
-
+    const text = await res.text(); let data; try { data = JSON.parse(text); } catch { data = null; }
     if (!res.ok || !data || data.ok !== true){
       alert(text || 'Server error revoking access.');
       return;
     }
-
     loadCustomers();
-  }catch (e){
-    alert('Network error while revoking.');
-  }
+  }catch{ alert('Network error while revoking.'); }
 }
 
 async function loadCustomers(){
@@ -182,7 +174,7 @@ async function loadCustomers(){
     custBody.innerHTML = rows.map(r=>{
       const inactive = String(r.active).toLowerCase()==='false';
       const action = inactive
-        ? `<span class="pill">Revoked</span>`
+        ? `<span class="btn secondary" disabled>Revoked</span>`
         : `<button class="btn danger" data-company="${r.company}">Revoke</button>`;
       return `<tr>
         <td>${r.company||''}</td>
@@ -193,7 +185,7 @@ async function loadCustomers(){
       </tr>`;
     }).join('');
 
-    // Hook up revoke buttons
+    // attach revoke handlers
     custBody.querySelectorAll('button[data-company]').forEach(b=>{
       b.addEventListener('click', ()=> revokeCustomer(b.getAttribute('data-company')));
     });
