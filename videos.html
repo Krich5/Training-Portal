@@ -22,11 +22,9 @@
   h1,h2{margin:6px 0 12px 0}
   .muted{color:var(--muted)}
   video{width:100%;aspect-ratio:16/9;background:#000;border-radius:14px}
-  /* Progress */
   .prog{margin-top:12px;background:var(--input);border:1px solid var(--border);border-radius:10px;overflow:hidden}
   .bar{height:10px;background:linear-gradient(135deg,var(--accentA),var(--accentB));width:0%}
   .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
-  /* Bottom playlist */
   #playlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
   .item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--input);cursor:pointer}
   .item.active{outline:2px solid var(--accentB)}
@@ -46,9 +44,9 @@
   <div class="wrap">
     <section class="card" id="playerCard">
       <h2 id="courseTitle" class="muted">Loading…</h2>
-      <video id="player" controls playsinline></video>
+      <h3 id="videoTitle" style="margin-top:-4px;margin-bottom:12px;"></h3>
+      <video id="player" controls playsinline controlsList="nodownload noplaybackrate noremoteplayback" disablepictureinpicture></video>
 
-      <!-- overall progress -->
       <div class="prog" aria-label="overall progress"><div id="bar" class="bar"></div></div>
       <div class="row"><div id="progText" class="muted">0/0 completed</div><div id="lockHint" class="hint"></div></div>
     </section>
@@ -61,15 +59,12 @@
   </div>
 
 <script>
-/* ====== CONFIG (same endpoint you used in index.html) ====== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec";
 
-/* ====== USER CONTEXT ====== */
 const user = (()=>{ try{ return JSON.parse(sessionStorage.getItem('tp_user')||'null'); }catch{ return null; }})();
 if(!user){ location.href='index.html'; }
 document.getElementById('who').textContent = `${user.name} — ${user.company}`;
 
-/* ====== PLAYLISTS ====== */
 function playlistFor(course){
   if(course === 'agent'){
     return [
@@ -81,36 +76,31 @@ function playlistFor(course){
       { title:'Sign out',            src:'AgentVideos/Sign%20Out.mp4' }
     ];
   }
-  if(course === 'supervisor'){
-    return [{ title:'Supervisor intro', src:'SupVideos/IMG_3339.mov' }];
-  }
-  if(course === 'admin'){
-    return [{ title:'Admin intro', src:'AdminVideos/intro.mp4' }];
-  }
+  if(course === 'supervisor'){ return [{ title:'Supervisor intro', src:'SupVideos/IMG_3339.mov' }]; }
+  if(course === 'admin'){ return [{ title:'Admin intro', src:'AdminVideos/intro.mp4' }]; }
   return [];
 }
 
-/* ====== UI HOOKS ====== */
 const listEl   = document.getElementById('playlist');
 const player   = document.getElementById('player');
 const courseTitle = document.getElementById('courseTitle');
+const videoTitle = document.getElementById('videoTitle');
 const bar = document.getElementById('bar');
 const progText = document.getElementById('progText');
 const lockHint = document.getElementById('lockHint');
 const playlistNote = document.getElementById('playlistNote');
 
-/* ====== STATE ====== */
 const vids = playlistFor(user.course);
 document.title = `${user.company} — ${user.course} Videos`;
 courseTitle.textContent = `${user.company} — ${user.course[0].toUpperCase()+user.course.slice(1)} Training`;
 
 let idx = 0;
 let completed = new Array(vids.length).fill(false);
-let maxSeen = 0;                 // per-video max watched seconds (first pass)
-let unlocked = false;            // becomes true after completing the whole course
-let guardingSeek = false;        // avoid loops when we clamp seeking
+let maxSeen = 0;
+let unlocked = false;
+let guardingSeek = false;
+let guardTimer = null;
 
-/* ====== RENDER ====== */
 function overall(){
   const done = completed.filter(Boolean).length;
   progText.textContent = `${done}/${vids.length} completed`;
@@ -119,17 +109,20 @@ function overall(){
     ? 'All videos complete — you can jump and seek freely.'
     : 'First time through: watch in order. You can rewind anytime, but can’t fast-forward past what you’ve already watched.';
 }
+function nextPlayableIndex(){
+  const firstTodo = completed.findIndex(x=>!x);
+  return firstTodo === -1 ? vids.length-1 : firstTodo;
+}
 function renderList(){
   listEl.innerHTML = vids.map((v,i)=>`
-    <button class="item ${i===idx?'active':''} ${!unlocked && i>nextPlayableIndex()? 'locked':''}" data-i="${i}" aria-label="Play ${v.title}">
+    <button class="item ${i===idx?'active':''} ${!unlocked && i>nextPlayableIndex() ? 'locked':''}" data-i="${i}" aria-label="Play ${v.title}">
       <span>${i+1}. ${v.title}</span>
-      <span class="badge ${completed[i]?'done':''}">${completed[i]?'done':''}</span>
+      <span class="badge ${completed[i]?'done':''}">${completed[i]?'Done':''}</span>
     </button>`).join('');
   listEl.querySelectorAll('.item').forEach(el=>{
     el.addEventListener('click', ()=>{
       const i = Number(el.getAttribute('data-i'));
       if (!unlocked && i > nextPlayableIndex()) {
-        // subtle nudge
         el.animate([{transform:'translateX(0)'},{transform:'translateX(-4px)'},{transform:'translateX(0)'}], {duration:180});
         return;
       }
@@ -139,43 +132,44 @@ function renderList(){
   });
   overall();
 }
-function nextPlayableIndex(){
-  // first locked index is first not-completed; only that and earlier are allowed
-  const firstTodo = completed.findIndex(x=>!x);
-  return firstTodo === -1 ? vids.length-1 : firstTodo;
-}
 
-/* ====== LOAD / PLAY ====== */
+function startGuard(){
+  stopGuard();
+  if (unlocked) return;
+  guardTimer = setInterval(()=>{
+    if (unlocked) { stopGuard(); return; }
+    const allowed = Math.max(0, maxSeen - 0.25);
+    if (player.currentTime > allowed) player.currentTime = allowed;
+  }, 150);
+}
+function stopGuard(){ if (guardTimer){ clearInterval(guardTimer); guardTimer=null; } }
+
 function loadCurrent(autoplay){
   maxSeen = 0;
   lockHint.textContent = unlocked ? '' : 'Seeking ahead is disabled until you’ve watched this video once.';
   player.src = vids[idx].src;
-  // Force safe start
+  videoTitle.textContent = vids[idx].title;
   player.currentTime = 0;
   if (autoplay) player.play();
   renderList();
+  startGuard();
 }
 
-/* ====== SEEK GUARDS (no fast-forward first time) ====== */
 player.addEventListener('timeupdate', ()=>{
-  // Track the furthest point reached on first pass
   if (!unlocked) maxSeen = Math.max(maxSeen, player.currentTime || 0);
 });
-
-player.addEventListener('seeking', ()=>{
+function clampSeek(){
   if (unlocked || guardingSeek) return;
-  const allowed = Math.max(0, maxSeen - 0.25); // small tolerance
+  const allowed = Math.max(0, maxSeen - 0.25);
   if (player.currentTime > allowed) {
     guardingSeek = true;
     player.currentTime = allowed;
-    setTimeout(()=> guardingSeek=false, 0);
+    setTimeout(()=>guardingSeek=false,0);
   }
-});
-
-/* Prevent keyboard rate hacks (best-effort) */
+}
+['seeking','seeked'].forEach(ev=>player.addEventListener(ev,clampSeek));
 document.addEventListener('ratechange', ()=>{ if (!unlocked && player.playbackRate>1) player.playbackRate = 1; });
 
-/* ====== WHEN A VIDEO ENDS ====== */
 player.addEventListener('ended', ()=>{
   completed[idx] = true;
   const allDone = completed.every(Boolean);
@@ -184,11 +178,9 @@ player.addEventListener('ended', ()=>{
     unlocked = true;
     lockHint.textContent = '';
     overall();
-
-    // Best-effort completion POST
     const videos_json = vids.map((v,i)=>({ index:i, title:v.title, src:v.src }));
     fetch(SCRIPT_URL, {
-      method: "POST",
+      method:"POST",
       body: JSON.stringify({
         mode:'completion',
         name:user.name,
@@ -196,19 +188,17 @@ player.addEventListener('ended', ()=>{
         company:user.company,
         ts_client: Date.now(),
         page:'videos',
-        ua: navigator.userAgent,
+        ua:navigator.userAgent,
         videos_json
       })
     }).catch(()=>{});
   } else {
-    // Move to next required video
     const next = completed.findIndex(x=>!x);
     if (next !== -1) idx = next;
   }
   loadCurrent(true);
 });
 
-/* ====== BOOT ====== */
 if (!vids.length){
   courseTitle.textContent = `${user.company} — ${user.course} Training`;
   playlistNote.textContent = 'No videos assigned for this course yet.';
