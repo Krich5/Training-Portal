@@ -1,17 +1,26 @@
-<!-- config.js -->
-<script>
-window.APP_CONFIG = {
-  // MUST be the exact live /exec URL that admin.html is using and that you see working
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec",
+(function () {
+  const VERSION = 'v1';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwawMz0Vgg4PSp7sZ0cWCYkEWtEL_fDunaimL5MbmjxC05QIshFdmPcedH0y6Gctu_V/exec';
+  const ADMIN_TOKEN = 'CXASTrainingPortal25';
+  const ADMIN_PASS = 'cooladmin';
+  const BRAND = 'CXAS Training Portal';
+  const TIMEZONE = 'America/New_York';
 
-  // must match SECRET_TOKEN in Apps Script
-  ADMIN_TOKEN: "CXASTrainingPortal25",
+  window.APP_CONFIG = {
+    VERSION,
+    SCRIPT_URL,
+    ADMIN_TOKEN,
+    ADMIN_PASS,
+    BRAND,
+    TIMEZONE
+  };
 
-  // admin gate password
-  ADMIN_PASS: "cooladmin",
-
-  BRAND: "CXAS Training Portal",
-  TIMEZONE: "America/New_York",
-  VERSION: "v3" // bump this anytime you change config to bust caches
-};
-</script>
+  if (typeof console !== 'undefined') {
+    console.info('APP_CONFIG loaded:', {
+      SCRIPT_URL: window.APP_CONFIG.SCRIPT_URL,
+      ADMIN_TOKEN: window.APP_CONFIG.ADMIN_TOKEN ? 'set' : 'MISSING',
+      ADMIN_PASS: window.APP_CONFIG.ADMIN_PASS ? 'set' : 'MISSING',
+      VERSION: window.APP_CONFIG.VERSION
+    });
+  }
+})();
