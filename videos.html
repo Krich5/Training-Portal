@@ -7,66 +7,160 @@
 <meta name="color-scheme" content="dark">
 <style>
   :root {
-    --bg:#0b1020; --bg2:#0a132a; --card:#131a2a; --muted:#92a0b8; --fg:#e9edf5;
-    --input:#0e1525; --border:rgba(255,255,255,.08);
-    --accentA:#22d3ee; --accentB:#3b82f6; --ok:#34d399;
+    --bg:#030814;
+    --bg2:#060f23;
+    --card:#131a2a;
+    --muted:#92a0b8;
+    --fg:#e9edf5;
+    --input:#0e1525;
+    --border:rgba(255,255,255,.08);
+    --accentA:#22d3ee;
+    --accentB:#3b82f6;
+    --ok:#34d399;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans";
-       background:linear-gradient(180deg,var(--bg),var(--bg2)); color:var(--fg); min-height:100vh}
-  header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)}
+       background:radial-gradient(circle at 15% -10%, rgba(72,0,255,.3), transparent 45%),radial-gradient(circle at 80% 0%, rgba(0,199,255,.22), transparent 42%),linear-gradient(180deg,var(--bg),var(--bg2)); color:var(--fg); min-height:100vh;position:relative;overflow:hidden}
+  header{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
   .left{justify-self:start}
-  .center{justify-self:center;font-weight:800;letter-spacing:.2px}
-  .right{justify-self:end;color:var(--muted);font-weight:600;text-align:right}
+  .center{justify-self:center;text-align:center}
+  .brand{font-weight:800;letter-spacing:.2px;font-size:1.1rem}
+  .right{justify-self:end;color:var(--muted);font-weight:600;text-align:right;display:flex;align-items:center;gap:10px}
+  .logo{height:36px}
+  .userInfo{font-size:.85rem;line-height:1.2}
   .btnLink{background:var(--input);color:var(--fg);border:1px solid var(--border);font-weight:800;padding:8px 14px;border-radius:12px;text-decoration:none}
-  .wrap{max-width:1280px;margin:26px auto;padding:0 18px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .pageWrap{max-width:1280px;margin:26px auto;padding:0 18px;position:relative}
+  .pageWrap::after{
+    content:"";
+    position:absolute;
+    inset:-80px -40px;
+    background:radial-gradient(circle at 20% 20%,rgba(59,130,246,.15),transparent 55%),radial-gradient(circle at 80% 80%,rgba(236,72,153,.12),transparent 50%);
+    filter:blur(40px);
+    z-index:0;
+    pointer-events:none;
+  }
+  .card{position:relative;background:linear-gradient(145deg,rgba(46,74,142,.6),rgba(107,33,168,.46));border:1px solid transparent;border-radius:34px;padding:32px 32px;box-shadow:0 30px 70px rgba(5,10,25,.55);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);transition:box-shadow .35s ease;overflow:hidden;z-index:1;}
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    padding:1px;
+    background:linear-gradient(135deg,rgba(34,211,238,.7),rgba(59,130,246,.25),rgba(15,23,42,.2));
+    -webkit-mask:
+      linear-gradient(#000,#000) content-box,
+      linear-gradient(#000,#000);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    opacity:.4;
+    pointer-events:none;
+    transition:opacity .3s ease;
+  }
+  .card:hover::before,
+  .card:focus-within::before{opacity:.95;}
+  .card:focus-within{box-shadow:0 38px 90px rgba(34,211,238,.35);}
 
   /* Player section */
-  .playerShell{display:grid;grid-template-columns:1fr;gap:14px}
-  h1{margin:0 0 6px 0;font-size:clamp(18px,2vw,22px);color:var(--muted);font-weight:700}
-  #player{width:100%;aspect-ratio:16/9;background:#000;border-radius:16px}
-  .prog{margin-top:8px;background:var(--input);border:1px solid var(--border);border-radius:999px;overflow:hidden;height:12px}
-  .bar{height:100%;width:0%;background:linear-gradient(135deg,var(--accentA),var(--accentB))}
-  .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap}
+  .heroStats{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:22px;flex-wrap:wrap}
+  .heroStats h1{margin:0;font-size:clamp(20px,2.4vw,28px);}
+  .heroMeta{color:var(--muted);font-size:.93rem}
+  .pulseBadge{display:inline-flex;align-items:center;gap6px;background:rgba(34,211,238,.18);color:var(--accentA);padding:4px 12px;border-radius:999px;font-weight:600;letter-spacing:.03em;box-shadow:0 0 20px rgba(34,211,238,.3)}
+  .pulseBadge::before{content:"";width:8px;height:8px;border-radius:999px;background:currentColor;box-shadow:0 0 12px currentColor;animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%{opacity:.2;transform:scale(.8);}50%{opacity:1;transform:scale(1);}100%{opacity:.2;transform:scale(.8);}}
+  .playerShell{display:grid;grid-template-columns:1fr;gap:18px}
+  .videoFrame{position:relative;border-radius:26px;padding:4px;background:linear-gradient(140deg,rgba(34,211,238,.35),rgba(99,102,241,.3));box-shadow:inset 0 0 40px rgba(255,255,255,.08);}
+  .videoFrame::after{content:"";position:absolute;inset:14px;border-radius:22px;border:1px solid rgba(255,255,255,.2);pointer-events:none;mix-blend-mode:screen;opacity:.6;}
+  #player{width:100%;aspect-ratio:16/9;background:#000;border-radius:22px;box-shadow:0 40px 80px rgba(0,0,0,.6);}
+  .progressPanel{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .progressRing{width:96px;height:96px;position:relative}
+  .progressRing svg{transform:rotate(-90deg);width:100%;height:100%}
+  .progressRing circle{fill:none;stroke:rgba(255,255,255,.08);stroke-width:10;}
+  .progressRing circle[data-bar]{stroke:url(#ringGradient);stroke-linecap:round;stroke-dasharray:282;stroke-dashoffset:282;transition:stroke-dashoffset .4s ease;}
+  .progressRing span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .progText{display:flex;flex-direction:column;gap:6px}
+  .progText strong{font-size:1.1rem}
   .muted{color:var(--muted)}
 
   /* Playlist bottom */
-  .playlistShell{margin-top:18px}
-  .listHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  #playlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-  .item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--input);cursor:pointer;transition:transform .05s ease}
-  .item:hover{transform:translateY(-1px)}
-  .item.active{outline:2px solid var(--accentB)}
-  .badge{font-size:.8rem;color:var(--muted)}
-  .badge.done{color:var(--ok);font-weight:700}
+  .playlistShell{margin-top:26px}
+  .listHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  #playlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .playlistGate{margin-top:26px;text-align:center;color:var(--muted);font-size:.95rem}
+  .playlistGate .lockBadge{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.08);margin-bottom:10px;font-weight:600;}
+  .tile{position:relative;padding:16px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(135deg,rgba(15,23,42,.5),rgba(24,24,35,.85));color:var(--fg);text-align:left;cursor:pointer;transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;overflow:hidden;}
+  .tile::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(59,130,246,.35),transparent 55%);opacity:.4;transition:opacity .2s}
+  .tile:hover{transform:translateY(-4px);border-color:rgba(34,211,238,.4);box-shadow:0 18px 40px rgba(5,10,25,.6);}
+  .tile:hover::before{opacity:.7;}
+  .tile.active{border-color:rgba(34,211,238,.7);box-shadow:0 20px 50px rgba(34,211,238,.25);}
+  .tileHead{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+  .thumb{width:54px;height:54px;border-radius:16px;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.35),rgba(59,130,246,.4));display:flex;align-items:center;justify-content:center;font-weight:700;color:#050f1f}
+  .tileTitle{font-weight:700}
+  .badge{font-size:.78rem;color:var(--muted)}
+  .badge.done{color:var(--ok);font-weight:700;display:flex;align-items:center;gap:4px}
+  .badge.done::before{content:"✓";font-size:.9rem;color:var(--ok)}
+  .tileInfo{color:var(--muted);font-size:.85rem;margin-top:6px}
+  .tileConfetti{pointer-events:none;position:absolute;inset:0;overflow:hidden;z-index:0}
+  .tile .sparkle{position:absolute;width:4px;height:10px;border-radius:999px;background:linear-gradient(180deg,#fff,transparent);animation:spark 1.2s ease-out forwards;}
+  @keyframes spark{0%{transform:translateY(0) scaleY(.6);opacity:1;}100%{transform:translateY(-30px) scaleY(1.4);opacity:0;}}
 </style>
 </head>
 <body>
   <header>
-    <div class="left"><a class="btnLink" href="index.html">← Back</a></div>
-    <div class="center" id="hdr">Training</div>
-    <div class="right" id="who"></div>
+    <div class="wrap">
+      <div class="left"><a class="btnLink" href="index.html">← Back</a></div>
+      <div class="center"><div class="brand" id="hdr">Training</div></div>
+      <div class="right">
+        <div class="userInfo" id="who"></div>
+        <img src="CX%20Advanced%20Solutions_Smaller_white.png" alt="CX Advanced Solutions" class="logo">
+      </div>
+    </div>
   </header>
 
-  <div class="wrap">
+  <div class="pageWrap">
     <!-- BIG player card -->
-    <section class="card playerShell">
-      <div>
-        <h1 id="videoTitle">Loading…</h1>
+    <section class="card playerShell" data-magic-bento>
+      <div class="heroStats">
+        <div>
+          <div class="pulseBadge">In Progress</div>
+          <h1 id="videoTitle">Loading…</h1>
+          <p class="heroMeta" id="heroMeta">Training playlist</p>
+        </div>
+        <div class="progressPanel">
+          <div class="progressRing">
+            <svg viewBox="0 0 100 100">
+              <defs>
+                <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop stop-color="#22d3ee"/>
+                  <stop offset="1" stop-color="#a855f7"/>
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="45"></circle>
+              <circle cx="50" cy="50" r="45" data-bar></circle>
+            </svg>
+            <span id="ringLabel">0%</span>
+          </div>
+          <div class="progText">
+            <strong id="progText">0/0 completed</strong>
+            <p class="muted" id="hint"></p>
+          </div>
+        </div>
+      </div>
+      <div class="videoFrame">
         <video id="player" controls playsinline preload="metadata"
                controlsList="nodownload noremoteplayback"
                disablepictureinpicture></video>
-        <div class="prog" aria-label="overall progress"><div id="bar" class="bar"></div></div>
-        <div class="row">
-          <div id="progText" class="muted">0/0 completed</div>
-          <div id="hint" class="muted"></div>
-        </div>
       </div>
     </section>
 
+    <!-- Playlist gate -->
+    <section class="card playlistGate" id="playlistGate" data-magic-bento>
+      <div class="lockBadge">🔒 Playlist Locked</div>
+      <p>Watch each video start to finish. The playlist unlocks after completing the full training.</p>
+    </section>
+
     <!-- Playlist at the bottom -->
-    <section class="card playlistShell">
+    <section class="card playlistShell" data-magic-bento id="playlistSection" style="display:none">
       <div class="listHeader">
         <h2 style="margin:0">Playlist</h2>
         <div class="muted" id="courseNote"></div>
@@ -76,6 +170,10 @@
   </div>
 
 <script src="config.js?v=v1"></script>
+<script src="spark.js?v=1"></script>
+<script src="magic-bento.js?v=1"></script>
+<script src="liquid-ether.js?v=1"></script>
+<script src="admin-access.js?v=1"></script>
 <script>
 /* ====== BACKEND URL (from config) ====== */
 const { SCRIPT_URL } = window.APP_CONFIG || {};
@@ -112,35 +210,83 @@ function playlistFor(course){
 const listEl   = document.getElementById('playlist');
 const player   = document.getElementById('player');
 const videoTitle = document.getElementById('videoTitle');
-const bar = document.getElementById('bar');
 const progText = document.getElementById('progText');
 const hint = document.getElementById('hint');
 const courseNote = document.getElementById('courseNote');
+const heroMeta = document.getElementById('heroMeta');
+const ringBar = document.querySelector('circle[data-bar]');
+const ringLabel = document.getElementById('ringLabel');
+const playlistSection = document.getElementById('playlistSection');
+const playlistGate = document.getElementById('playlistGate');
+const RING_LENGTH = 2 * Math.PI * 45;
 
 /* ====== STATE ====== */
 const vids = playlistFor(courseName);
+const progressKey = `tp_progress_${courseName}`;
+const savedProgress = loadProgress();
 let idx = 0;
 let completed = new Array(vids.length).fill(false);
+let playlistUnlocked = false;
+let maxAllowedTime = 0;
+
+if (savedProgress) {
+  playlistUnlocked = !!savedProgress.playlistUnlocked;
+  if (Array.isArray(savedProgress.completed)) {
+    completed = completed.map((_, i) => Boolean(savedProgress.completed[i]));
+  }
+  if (Number.isInteger(savedProgress.currentIndex) && savedProgress.currentIndex >= 0 && savedProgress.currentIndex < vids.length) {
+    idx = savedProgress.currentIndex;
+  } else {
+    const firstIncomplete = completed.findIndex(v => !v);
+    idx = firstIncomplete === -1 ? 0 : firstIncomplete;
+  }
+}
+
+if (playlistUnlocked) {
+  playlistGate.style.display = "none";
+  playlistSection.style.display = "";
+}
+
+heroMeta.textContent = `${CourseTitle} • ${vids.length} video${vids.length===1?"":"s"}`;
 
 /* ====== RENDER ====== */
 function overall(){
   const done = completed.filter(Boolean).length;
   progText.textContent = `${done}/${vids.length} completed`;
-  bar.style.width = `${(done/Math.max(1,vids.length))*100}%`;
+  const pct = vids.length ? (done / vids.length) * 100 : 0;
+  if (ringBar){
+    const offset = RING_LENGTH - (RING_LENGTH * pct / 100);
+    ringBar.style.strokeDasharray = RING_LENGTH;
+    ringBar.style.strokeDashoffset = offset;
+  }
+  ringLabel.textContent = `${Math.round(pct)}%`;
   hint.textContent = done===vids.length ? 'All Done — feel free to rewatch anything.' : '';
 }
 
 function renderList(){
+  if (!playlistUnlocked){
+    listEl.innerHTML = "";
+    return;
+  }
   listEl.innerHTML = vids.map((v,i)=>`
-    <button class="item ${i===idx?'active':''}" data-i="${i}">
-      <span>${i+1}. ${v.title}</span>
-      <span class="badge ${completed[i]?'done':''}">${completed[i]?'Done':''}</span>
+    <button class="tile ${i===idx?'active':''} ${completed[i]?'is-done':''}" data-i="${i}">
+      <div class="tileConfetti"></div>
+      <div class="tileHead">
+        <div class="thumb">${i+1}</div>
+        <div>
+          <div class="tileTitle">${v.title}</div>
+          <div class="badge ${completed[i]?'done':''}">${completed[i]?'Completed':'Pending'}</div>
+        </div>
+      </div>
+      <div class="tileInfo">Approx. ${v.duration||'2 min'} • Tap to play</div>
     </button>`).join('');
-  listEl.querySelectorAll('.item').forEach(el=>{
+  listEl.querySelectorAll('.tile').forEach(el=>{
     el.addEventListener('click', ()=>{
       const i = Number(el.getAttribute('data-i'));
       if (i === idx){ player.currentTime = 0; player.play(); return; }
-      idx = i; loadCurrent(true);
+      idx = i;
+      saveProgress();
+      loadCurrent(true);
     });
   });
   overall();
@@ -150,15 +296,37 @@ function renderList(){
 function loadCurrent(autoplay){
   player.src = vids[idx].src;
   videoTitle.textContent = vids[idx].title;
+  maxAllowedTime = 0;
   player.onloadedmetadata = ()=>{ if (autoplay) player.play(); };
   renderList();
 }
 
+player.addEventListener('timeupdate', ()=>{
+  if (!playlistUnlocked){
+    maxAllowedTime = Math.max(maxAllowedTime, player.currentTime || 0);
+  }
+});
+
+player.addEventListener('seeking', ()=>{
+  if (playlistUnlocked) return;
+  if (player.currentTime > maxAllowedTime + 0.35){
+    player.currentTime = maxAllowedTime;
+  }
+});
+
+player.addEventListener('ratechange', ()=>{
+  if (!playlistUnlocked && player.playbackRate !== 1){
+    player.playbackRate = 1;
+  }
+});
+
 /* ====== EVENTS ====== */
 player.addEventListener('ended', ()=>{
   completed[idx] = true;
+  triggerTileConfetti(idx);
   const allDone = completed.every(Boolean);
   if (allDone){
+    unlockPlaylist({ persist:false });
     const videos_json = vids.map((v,i)=>({ index:i, title:v.title, src:v.src }));
     fetch(SCRIPT_URL, {
       method:'POST',
@@ -177,6 +345,7 @@ player.addEventListener('ended', ()=>{
   } else if (idx < vids.length - 1){
     idx++;
   }
+  saveProgress();
   loadCurrent(true);
 });
 
@@ -188,6 +357,52 @@ if (!vids.length){
   courseNote.textContent = CourseTitle;
   loadCurrent(false);
   renderList();
+  saveProgress();
+}
+
+function triggerTileConfetti(tileIndex){
+  const tile = listEl.querySelector(`.tile[data-i="${tileIndex}"]`);
+  if (!tile) return;
+  const holder = tile.querySelector('.tileConfetti');
+  if (!holder) return;
+  holder.innerHTML = "";
+  for (let i=0;i<14;i++){
+    const spark = document.createElement('span');
+    spark.className = 'sparkle';
+    spark.style.left = `${Math.random()*100}%`;
+    spark.style.bottom = '0';
+    spark.style.animationDelay = `${i * 0.02}s`;
+    holder.appendChild(spark);
+  }
+}
+
+function unlockPlaylist({ persist = true } = {}){
+  if (playlistUnlocked) return;
+  playlistUnlocked = true;
+  playlistGate.style.display = "none";
+  playlistSection.style.display = "";
+  renderList();
+  if (persist) saveProgress();
+}
+
+function loadProgress(){
+  try{
+    const raw = localStorage.getItem(progressKey);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  }catch{
+    return null;
+  }
+}
+
+function saveProgress(){
+  try{
+    localStorage.setItem(progressKey, JSON.stringify({
+      completed,
+      playlistUnlocked,
+      currentIndex: idx
+    }));
+  }catch{}
 }
 </script>
 </body>
